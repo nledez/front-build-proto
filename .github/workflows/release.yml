@@ -21,7 +21,7 @@ jobs:
           wget https://github.com/cgwire/kitsu/raw/build/index.html
           GIT_COMMIT="$(git rev-parse HEAD)"
           GIT_TAG="$(git describe --tags)"
-          KITSU_VERSION="$(echo ${GIT_TAG} | sed 's/-build//')"
+          KITSU_VERSION="$(echo ${GIT_TAG} | sed 's/^v//;s/-build//')"
           echo "${KITSU_VERSION}" > dist/.version.txt
           echo "${GIT_COMMIT}"    > dist/.commit.txt
           echo "${GIT_TAG}"       > dist/.tag.txt
@@ -29,7 +29,15 @@ jobs:
           ARTEFACT_FILENAME="kitsu-${KITSU_VERSION}.tgz"
           tar cvzf "${ARTEFACT_FILENAME}" dist index.html package.json
           sha512sum "${ARTEFACT_FILENAME}" > "${CHECKSUM_FILENAME}"
-          ls -l
+          mv dist ..
+          git checkout build
+          git pull --rebase origin build
+          rm -rf dist
+          mv ../dist .
+          git add dist
+          git commit -m "New release (${KITSU_VERSION})"
+          git tag ${KITSU_VERSION}-build
+          git push origin build --tag
       - name: release
         uses: ncipollo/release-action@v1
         id: create_release
