@@ -30,7 +30,9 @@ jobs:
           tar cvzf "${ARTEFACT_FILENAME}" dist index.html package.json
           sha512sum "${ARTEFACT_FILENAME}" > "${CHECKSUM_FILENAME}"
           mv dist ..
+          echo "==== git checkout build"
           git checkout build
+          ls -alrt
           git pull --rebase origin build
           rm -rf dist
           mv ../dist .
