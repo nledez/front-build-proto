@@ -47,7 +47,8 @@ jobs:
           git config --global user.email "no-reply@cg-wire.com"
           git config --global user.name "CGWire bot"
           git commit -m "New release (${KITSU_VERSION})"
-          git tag ${KITSU_VERSION}-build
+          echo "git tag ${KITSU_VERSION}-build"
+          git tag "${KITSU_VERSION}-build"
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
