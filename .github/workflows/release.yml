@@ -34,11 +34,12 @@ jobs:
           # echo "==== git checkout build"
           git checkout build
           ls -alrt
-          git pull --rebase origin build
+          # git pull --rebase origin build
+          git reset --hard origin/build
           ls -alrt
-          test -d dist || git rm -rf dist
+          test -d dist && git rm -rf dist
           ls -alrt
-          test -d dist || rm -rf dist
+          test -d dist && rm -rf dist
           ls -alrt
           mv ../dist .
           ls -alrt
