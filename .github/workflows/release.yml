@@ -16,16 +16,18 @@ jobs:
         run: |
           npm install
           npm run build
-      - name: version
-        run: echo "::set-output name=version::$(git describe --tags)"
-        id: version
+          GIT_COMMIT="$(git rev-parse HEAD)"
+          GIT_TAG="$(git describe --tags)"
+          KITSU_VERSION="$(echo ${GIT_TAG} | sed 's/-build//')"
+          echo "${KITSU_VERSION}" > dist/.version.txt
+          echo "${GIT_COMMIT}"    > dist/.commit.txt
+          echo "${GIT_TAG}"       > dist/.tag.txt
+          CHECKSUM_FILENAME="kitsu-${KITSU_VERSION}.SHA512"
+          ARTEFACT_FILENAME="kitsu-${KITSU_VERSION}.tgz"
+          tar cvzf "${ARTEFACT_FILENAME}" dist index.html package.json
+          sha512sum "${ARTEFACT_FILENAME}" > "${CHECKSUM_FILENAME}"
       - name: release
-        uses: actions/create-release@v1
+        uses: ncipollo/release-action@v1
         id: create_release
         with:
-          draft: false
-          prerelease: false
-          release_name: ${{ steps.version.outputs.version }}
-          tag_name: ${{ github.ref }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+          token: ${{ secrets.GITHUB_TOKEN }}
