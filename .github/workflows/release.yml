@@ -34,5 +34,5 @@ jobs:
         uses: ncipollo/release-action@v1
         id: create_release
         with:
-          artifacts: kitsu-*.tgz kitsu-*.SHA512
+          artifacts: "kitsu-*.tgz,kitsu-*.SHA512"
           token: ${{ secrets.GITHUB_TOKEN }}
