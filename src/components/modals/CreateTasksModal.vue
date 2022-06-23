@@ -3,27 +3,45 @@
   'modal': true,
   'is-active': active
 }">
-  <div class="modal-background"></div>
+  <div class="modal-background" @click="$emit('cancel')" ></div>
+
   <div class="modal-content">
     <div class="box content">
 
-      <page-title :text="title"></page-title>
+      <page-title :text="title" />
 
       <p>{{ text }}</p>
 
-      <form v-on:submit.prevent>
-        <combobox
-          :label="$t('tasks.fields.task_type')"
-          :options="getTaskTypeOptions"
+      <form v-on:submit.prevent class="widden">
+        <combobox-task-type
+          :task-type-list="getApplicableTaskTypes()"
           v-model="form.task_type_id"
-        >
-        </combobox>
+        />
       </form>
 
-      <p class="has-text-right">
+      <div class="flexrow">
+        <div class="filler"></div>
+        <combobox
+          class="flexrow-item"
+          :options="selectionOptions"
+          :with-margin="false"
+          v-model="selectionOnly"
+        />
         <a
           :class="{
             button: true,
+            'flexrow-item': true,
+            'is-primary': true,
+            'is-loading': isLoadingStay
+          }"
+          @click="confirmAndStayClicked"
+        >
+          {{ $t("main.confirmation_and_stay") }}
+        </a>
+        <a
+          :class="{
+            button: true,
+            'flexrow-item': true,
             'is-primary': true,
             'is-loading': isLoading
           }"
@@ -31,15 +49,15 @@
         >
           {{ $t("main.confirmation") }}
         </a>
-        <router-link
-          :to="cancelRoute"
+        <button
+          @click="$emit('cancel')"
           class="button is-link"
         >
           {{ $t("main.cancel") }}
-        </router-link>
-        <p class="error has-text-right info-message" v-if="isError">
-          {{ errorText }}
-        </p>
+        </button>
+      </div>
+      <p class="error has-text-right info-message" v-if="isError">
+        {{ errorText }}
       </p>
 
     </div>
@@ -49,62 +67,137 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
-import Combobox from '../widgets/Combobox'
-import PageTitle from '../widgets/PageTitle'
+import { modalMixin } from '@/components/modals/base_modal'
+import Combobox from '@/components/widgets/Combobox'
+import ComboboxTaskType from '@/components/widgets/ComboboxTaskType'
+import PageTitle from '@/components/widgets/PageTitle'
 
 export default {
   name: 'create-task-modal',
+  mixins: [modalMixin],
+
   components: {
-    PageTitle,
-    Combobox
+    Combobox,
+    ComboboxTaskType,
+    PageTitle
   },
 
-  props: [
-    'onConfirmClicked',
-    'text',
-    'title',
-    'active',
-    'cancelRoute',
-    'isError',
-    'isLoading',
-    'isSuccess',
-    'errorText'
-  ],
+  props: {
+    active: {
+      type: Boolean,
+      default: false
+    },
+    errorText: {
+      type: String,
+      default: ''
+    },
+    isError: {
+      type: Boolean,
+      default: false
+    },
+    isLoading: {
+      type: Boolean,
+      default: false
+    },
+    isLoadingStay: {
+      type: Boolean,
+      default: false
+    },
+    isSuccess: {
+      type: Boolean,
+      default: false
+    },
+    text: {
+      type: String,
+      default: ''
+    },
+    title: {
+      type: String,
+      default: ''
+    }
+  },
 
   data () {
     return {
       form: {
         task_type_id: ''
-      }
+      },
+      selectionOnly: 'true',
+      selectionOptions: [
+        { label: this.$t('tasks.for_selection'), value: 'true' },
+        { label: this.$t('tasks.for_project'), value: 'false' }
+      ]
     }
   },
 
   computed: {
     ...mapGetters([
-      'taskTypes',
-      'getTaskTypeOptions'
-    ])
+      'productionAssetTaskTypes',
+      'productionShotTaskTypes',
+      'productionEditTaskTypes'
+    ]),
+    isAssetTasks () {
+      return this.$route.path.indexOf('assets') >= 0
+    },
+    isShotsTasks () {
+      return this.$route.path.indexOf('shots') >= 0
+    },
+    isEditsTasks () {
+      return this.$route.path.indexOf('edits') >= 0
+    }
   },
 
   methods: {
     ...mapActions([
     ]),
-    confirmClicked () {
-      this.$emit('confirm', this.form)
-    }
 
+    getApplicableTaskTypes () {
+      if (this.isAssetTasks) {
+        return this.productionAssetTaskTypes
+      }
+      if (this.isShotsTasks) {
+        return this.productionShotTaskTypes
+      }
+      if (this.isEditsTasks) {
+        return this.productionEditTaskTypes
+      }
+    },
+
+    confirmClicked () {
+      this.$emit('confirm', {
+        form: this.form,
+        selectionOnly: this.selectionOnly === 'true'
+      })
+    },
+
+    confirmAndStayClicked () {
+      this.$emit('confirm-and-stay', {
+        form: this.form,
+        selectionOnly: this.selectionOnly === 'true'
+      })
+    }
   },
 
   mounted () {
-    if (this.taskTypes.length > 0) {
-      this.form.task_type_id = this.taskTypes[0].id
+    const taskTypes = this.getApplicableTaskTypes()
+
+    if (taskTypes.length > 0) {
+      this.form.task_type_id = taskTypes[0].id
     }
   }
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .info-message {
   margin-top: 1em;
+}
+
+.widden {
+  margin-bottom: 12em;
+}
+
+.flexrow-item {
+  margin-right: 0;
 }
 </style>

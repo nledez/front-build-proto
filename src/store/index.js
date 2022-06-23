@@ -1,38 +1,58 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 
-import * as actions from './actions'
-import * as getters from './getters'
+import * as getters from '@/store/getters'
 
-import assetTypes from './modules/assettypes'
-import assets from './modules/assets'
-import shots from './modules/shots'
-import login from './modules/login'
-import main from './modules/main'
-import people from './modules/people'
-import user from './modules/user'
-import productions from './modules/productions'
-import taskTypes from './modules/tasktypes'
-import tasks from './modules/tasks'
+import assetTypes from '@/store/modules/assettypes'
+import assets from '@/store/modules/assets'
+import breakdown from '@/store/modules/breakdown'
+import customActions from '@/store/modules/customactions'
+import statusAutomations from '@/store/modules/statusautomation'
+import departments from '@/store/modules/departments'
+import edits from '@/store/modules/edits'
+import entities from '@/store/modules/entities'
+import login from '@/store/modules/login'
+import main from '@/store/modules/main'
+import news from '@/store/modules/news'
+import notifications from '@/store/modules/notifications'
+import people from '@/store/modules/people'
+import user from '@/store/modules/user'
+import playlists from '@/store/modules/playlists'
+import productions from '@/store/modules/productions'
+import schedule from '@/store/modules/schedule'
+import shots from '@/store/modules/shots'
+import taskTypes from '@/store/modules/tasktypes'
+import taskStatus from '@/store/modules/taskstatus'
+import tasks from '@/store/modules/tasks'
 
 Vue.use(Vuex)
 
-let modules = {
+const modules = {
   assetTypes,
   assets,
+  breakdown,
+  customActions,
+  statusAutomations,
+  departments,
+  edits,
+  entities,
   login,
   main,
   people,
+  playlists,
   productions,
+  news,
+  notifications,
+  schedule,
   shots,
-  taskTypes,
   tasks,
+  taskTypes,
+  taskStatus,
   user
 }
 
 export default new Vuex.Store({
-  actions,
   getters,
-  strict: true,
+  strict: process.env.NODE_ENV !== 'production',
   modules: modules
 })

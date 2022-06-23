@@ -1,28 +1,28 @@
 <template>
 <div class="field">
   <label class="label">{{ label }}</label>
-  <p class="control">
+  <div class="control colors">
     <div
       :class="{
         color: true,
-        selected: selectedIndex == index
+        selected: value === color
       }"
       :ref="'color-' + index"
+      :key="'color-' + index"
       v-for="(color, index) in colors"
-      @click="colorChanged(color, index)"
+      @click="colorChanged(color)"
     >
       <span
         :style="{ background: color }"
       >
       </span>
     </div>
-  </p>
+  </div>
 </div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
-import { Compact } from 'vue-color'
 
 export default {
   name: 'text-field',
@@ -32,7 +32,7 @@ export default {
       type: String
     },
     value: {
-      default: '',
+      default: '$grey999',
       type: String
     },
     placeholder: {
@@ -42,11 +42,9 @@ export default {
     type: {
       default: 'text',
       type: String
-    }
-  },
-  data () {
-    return {
-      colors: [
+    },
+    colors: {
+      default: () => [
         '#999999',
         '#8D6E63',
         '#43A047',
@@ -54,22 +52,28 @@ export default {
         '#009688',
         '#9CCC65',
         '#AFB42B',
+        '#DCE775',
+        '#FFF176',
+        '#FFEB3B',
         '#F9A825',
         '#F57C00',
         '#ff5252',
         '#F06292',
         '#AB47BC',
         '#5C6BC0',
+        '#1976D2',
         '#039BE5',
-        '#26C6DA',
+        '#42A5F5',
         '#64B5F6',
+        '#26C6DA',
         '#78909C'
-      ],
-      selectedIndex: -1
+      ]
     }
   },
-  components: {
-    'color-picker': Compact
+  data () {
+    return {
+      selectedColor: '$grey999'
+    }
   },
   computed: {
     ...mapGetters([
@@ -79,13 +83,12 @@ export default {
     ...mapActions([
     ]),
     colorChanged (color, index) {
-      this.selectedIndex = index
       this.$emit('input', color)
     }
   }
 }
 </script>
-<style>
+<style lang="scss" scoped>
 .color {
   display: inline-block;
   cursor: pointer;
@@ -102,6 +105,6 @@ export default {
 }
 
 .selected {
-  border: 3px solid #67BE4B;
+  border: 3px solid $light-green;
 }
 </style>

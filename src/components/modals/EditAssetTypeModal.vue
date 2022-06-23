@@ -3,11 +3,11 @@
   'modal': true,
   'is-active': active
 }">
-  <div class="modal-background"></div>
+  <div class="modal-background" @click="$emit('cancel')" ></div>
+
   <div class="modal-content">
 
     <div class="box">
-
       <h1 class="title" v-if="assetTypeToEdit && assetTypeToEdit.id">
         {{ $t("asset_types.edit_title") }} {{ assetTypeToEdit.name }}
       </h1>
@@ -19,45 +19,71 @@
         <text-field
           ref="nameField"
           :label="$t('asset_types.fields.name')"
+          :maxlength="30"
           v-model="form.name"
+          @enter="runConfirmation"
           v-focus
-        >
-        </text-field>
+        />
+
+        <label class="label">
+          {{ $t('asset_types.fields.task_types') }}
+        </label>
+        <div class="flexrow task-types mb1">
+          <div
+            class="flexrow-item mb1"
+            :key="taskTypeId"
+            @click="removeTaskType(taskTypeId)"
+            v-for="taskTypeId in form.task_types"
+          >
+            <task-type-name
+              :task-type="taskTypeMap.get(taskTypeId)"
+              :deletable="true"
+              v-if="taskTypeId"
+            />
+          </div>
+          <combobox
+            class="flexrow-item mb1"
+            :options="availableTaskTypes"
+            :with-margin="false"
+            @input="id => {
+              taskTypeMap.get(id) && form.task_types.push(id)
+            }"
+            v-if="availableTaskTypes.length > 1"
+          />
+        </div>
       </form>
 
-      <p class="has-text-right">
-        <a
-          :class="{
-            button: true,
-            'is-primary': true,
-            'is-loading': isLoading
-          }"
-          @click="confirmClicked"
-        >
-          {{ $t("main.confirmation") }}
-        </a>
-        <router-link
-          :to="cancelRoute"
-          class="button is-link">
-          {{ $t("main.cancel") }}
-        </router-link>
-      </p>
+      <modal-footer
+        :error-text="$t('asset_types.create_error')"
+        :is-error="isError"
+        :is-loading="isLoading"
+        @confirm="runConfirmation"
+        @cancel="$emit('cancel')"
+      />
     </div>
-
   </div>
 </div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
-import TextField from '../widgets/TextField'
-import ColorField from '../widgets/ColorField'
+import { modalMixin } from '@/components/modals/base_modal'
+
+import { sortByName } from '@/lib/sorting'
+
+import Combobox from '@/components/widgets/Combobox.vue'
+import ModalFooter from '@/components/modals/ModalFooter'
+import TextField from '@/components/widgets/TextField'
+import TaskTypeName from '@/components/widgets/TaskTypeName'
 
 export default {
   name: 'edit-asset-type-modal',
+  mixins: [modalMixin],
   components: {
-    TextField,
-    ColorField
+    Combobox,
+    TaskTypeName,
+    ModalFooter,
+    TextField
   },
 
   props: [
@@ -67,55 +93,105 @@ export default {
     'cancelRoute',
     'isLoading',
     'isError',
-    'errorText',
     'assetTypeToEdit'
   ],
 
-  watch: {
-    assetTypeToEdit () {
-      if (this.assetTypeToEdit) {
-        this.form.name = this.assetTypeToEdit.name
+  data () {
+    return {
+      form: {
+        name: '',
+        task_types: []
       }
     }
   },
 
-  data () {
-    return {}
-  },
-
   computed: {
     ...mapGetters([
+      'taskTypes',
+      'taskTypeMap',
       'assetTypes',
       'assetTypeStatusOptions'
     ]),
-    form () {
-      return {
-        name: ''
-      }
+
+    availableTaskTypes () {
+      const taskTypes = sortByName(
+        this.taskTypes.filter(taskType => {
+          return (
+            this.form.task_types.indexOf(taskType.id) === -1 &&
+            taskType.for_entity === 'Asset'
+          )
+        })
+      )
+      return [
+        {
+          name: '+ Task Type',
+          id: '-'
+        },
+        ...taskTypes
+      ].map(taskType => {
+        return {
+          label: taskType.name,
+          value: taskType.id
+        }
+      })
     }
   },
 
   methods: {
     ...mapActions([
+      'loadTaskTypes'
     ]),
-    confirmClicked () {
+
+    removeTaskType (idToRemove) {
+      const taskTypeIndex = this.form.task_types.indexOf(idToRemove)
+      if (taskTypeIndex >= 0) {
+        this.form.task_types.splice(taskTypeIndex, 1)
+      }
+    },
+
+    runConfirmation () {
       this.$emit('confirm', this.form)
+    }
+  },
+
+  watch: {
+    active () {
+      if (this.active) {
+        setTimeout(() => {
+          this.$refs.nameField.focus()
+        }, 100)
+      }
+    },
+
+    assetTypeToEdit () {
+      if (this.assetTypeToEdit.id) {
+        const types = this.assetTypeToEdit.task_types || []
+        this.form = {
+          name: this.assetTypeToEdit.name,
+          task_types: [...types]
+        }
+      } else {
+        this.form = {
+          name: '',
+          task_types: this.taskTypes.filter(taskType => {
+            return taskType.for_entity === 'Asset'
+          }).map(taskType => {
+            return taskType.id
+          })
+        }
+      }
     }
   }
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .modal-content .box p.text {
   margin-bottom: 1em;
 }
+
 .is-danger {
   color: #ff3860;
   font-style: italic;
-}
-.title {
-  border-bottom: 2px solid #DDD;
-  padding-bottom: 0.5em;
-  margin-bottom: 1.2em;
 }
 </style>

@@ -3,12 +3,13 @@
   'modal': true,
   'is-active': active
 }">
-  <div class="modal-background"></div>
+  <div class="modal-background" @click="$emit('cancel')" ></div>
+
   <div class="modal-content">
 
     <div class="box">
 
-      <h1 class="title" v-if="taskTypeToEdit && taskTypeToEdit.id">
+      <h1 class="title" v-if="isEditing">
         {{ $t("task_types.edit_title") }} {{ taskTypeToEdit.name }}
       </h1>
       <h1 class="title" v-else>
@@ -20,110 +21,144 @@
           ref="nameField"
           :label="$t('task_types.fields.name')"
           v-model="form.name"
+          @enter="confirmClicked"
           v-focus
-        >
-        </text-field>
+        />
+        <combobox
+          :label="$t('task_types.fields.dedicated_to')"
+          :options="dedicatedToOptions"
+          @enter="confirmClicked"
+          v-model="form.for_entity"
+           v-if="!isEditing"
+        />
+        <combobox-boolean
+          :label="$t('task_types.fields.allow_timelog')"
+          @enter="confirmClicked"
+          v-model="form.allow_timelog"
+        />
+        <combobox-department
+          :label="$t('task_types.fields.department')"
+          @enter="confirmClicked"
+          v-model="form.department_id"
+        />
         <color-field
           ref="colorField"
           :label="$t('task_types.fields.color')"
           v-model="form.color"
-        >
-        </color-field>
+        />
       </form>
 
-      <p class="has-text-right">
-        <a
-          :class="{
-            button: true,
-            'is-primary': true,
-            'is-loading': isLoading
-          }"
-          @click="confirmClicked"
-        >
-          {{ $t("main.confirmation") }}
-        </a>
-        <router-link
-          :to="cancelRoute"
-          class="button is-link">
-          {{ $t("main.cancel") }}
-        </router-link>
-      </p>
+      <modal-footer
+        :error-text="$t('task_types.create_error')"
+        :is-loading="isLoading"
+        :is-error="isError"
+        @confirm="confirmClicked"
+        @cancel="$emit('cancel')"
+      />
     </div>
-
   </div>
 </div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
-import TextField from '../widgets/TextField'
-import ColorField from '../widgets/ColorField'
+import { modalMixin } from '@/components/modals/base_modal'
+
+import Combobox from '@/components/widgets/Combobox.vue'
+import ComboboxBoolean from '@/components/widgets/ComboboxBoolean.vue'
+import ComboboxDepartment from '@/components/widgets/ComboboxDepartment.vue'
+import ColorField from '@/components/widgets/ColorField'
+import ModalFooter from '@/components/modals/ModalFooter'
+import TextField from '@/components/widgets/TextField'
 
 export default {
   name: 'edit-task-type-modal',
+  mixins: [modalMixin],
   components: {
-    TextField,
-    ColorField
+    Combobox,
+    ComboboxBoolean,
+    ComboboxDepartment,
+    ColorField,
+    ModalFooter,
+    TextField
   },
 
   props: [
-    'onConfirmClicked',
-    'text',
     'active',
-    'cancelRoute',
+    'onConfirmClicked',
+    'entries',
     'isLoading',
     'isError',
-    'errorText',
-    'taskTypeToEdit'
+    'taskTypeToEdit',
+    'text'
   ],
 
   watch: {
     taskTypeToEdit () {
       if (this.taskTypeToEdit) {
-        this.form.name = this.taskTypeToEdit.name
-        this.form.color = this.taskTypeToEdit.color
+        this.form = {
+          name: this.taskTypeToEdit.name,
+          color: this.taskTypeToEdit.color,
+          for_entity: this.taskTypeToEdit.for_entity,
+          allow_timelog: String(this.taskTypeToEdit.allow_timelog === true),
+          department_id: this.taskTypeToEdit.department_id
+        }
       }
     }
   },
 
   data () {
-    return {}
+    return {
+      form: {
+        name: '',
+        color: '$grey',
+        for_entity: 'Asset',
+        allow_timelog: 'false',
+        department_id: null
+      },
+      dedicatedToOptions: [
+        { label: this.$t('assets.title'), value: 'Asset' },
+        { label: this.$t('shots.title'), value: 'Shot' },
+        { label: this.$t('edits.title'), value: 'Edit' }
+      ]
+    }
   },
 
   computed: {
     ...mapGetters([
       'taskTypes',
-      'taskTypeStatusOptions'
+      'taskTypeStatusOptions',
+      'departments'
     ]),
-    form () {
-      return {
-        name: '',
-        color: '#FFFFFF'
-      }
+    isEditing () {
+      return this.taskTypeToEdit && this.taskTypeToEdit.id
     }
   },
 
   methods: {
     ...mapActions([
     ]),
+
+    newPriority (forEntity) {
+      return this.entries.filter(taskType => taskType.for_entity === forEntity).length + 1
+    },
+
     confirmClicked () {
+      if (!this.isEditing) {
+        this.form.priority = this.newPriority(this.form.for_entity)
+      }
       this.$emit('confirm', this.form)
     }
   }
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .modal-content .box p.text {
   margin-bottom: 1em;
 }
 .is-danger {
   color: #ff3860;
   font-style: italic;
-}
-.title {
-  border-bottom: 2px solid #DDD;
-  padding-bottom: 0.5em;
-  margin-bottom: 1.2em;
 }
 </style>

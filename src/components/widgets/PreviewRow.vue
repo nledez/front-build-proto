@@ -1,32 +1,42 @@
 <template>
-<div class="preview-row has-text-center">
+<div :class="{
+  'preview-row': true,
+  'has-text-center': true,
+  selected: selected,
+  green: preview.validation_status === 'validated'
+}">
   <button-link
     :text="label"
-    icon="fa-eye"
-    :path="'/tasks/' + taskId + '/previews/' + preview.id"
-  >
-  </button-link>
+    :path="previewPath"
+  />
 </div>
 </template>
 
 <script>
-import ButtonLink from './ButtonLink.vue'
+import ButtonLink from '@/components/widgets/ButtonLink.vue'
 
 export default {
   name: 'preview-row',
   components: {
     ButtonLink
   },
-  props: [
-    'preview',
-    'taskId'
-  ],
+  props: {
+    preview: {
+      type: Object,
+      default: () => {}
+    },
+    selected: {
+      type: Boolean,
+      default: false
+    },
+    previewPath: {
+      type: Object,
+      default: () => {}
+    }
+  },
   computed: {
     label () {
-      let label = `Preview ${this.preview.revision}`
-      if (this.preview.feedback) {
-        label = `${label} (${this.$tc('tasks.feedback')})`
-      }
+      const label = `v${this.preview.revision}`
       return label
     }
   },
@@ -35,11 +45,28 @@ export default {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
+.preview-row {
+  margin-right: 0.5em;
+}
+
 .preview-row a {
-  display: block;
-  width: 100%;
-  display: flex;
-  margin-bottom: 1em;
+  border: 3px solid $light-grey;
+}
+
+.preview-row:hover a {
+  border: 3px solid #E1D4F9;
+}
+
+.preview-row.green a {
+  border: 3px solid $light-green;
+}
+
+.preview-row.red a {
+  border: 3px solid $dark-red;
+}
+
+.preview-row.selected a {
+  border: 3px solid #8F91EB;
 }
 </style>

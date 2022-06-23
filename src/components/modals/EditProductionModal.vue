@@ -3,10 +3,11 @@
   'modal': true,
   'is-active': active
 }">
-  <div class="modal-background"></div>
+  <div class="modal-background" @click="$emit('cancel')" ></div>
+
   <div class="modal-content">
     <div class="box">
-      <h1 class="title" v-if="productionToEdit">
+      <h1 class="title" v-if="productionToEdit && productionToEdit.id">
         {{ $t("productions.edit_title") }} {{ productionToEdit.name }}
       </h1>
       <h1 class="title" v-else>
@@ -18,35 +19,57 @@
           ref="nameField"
           :label="$t('productions.fields.name')"
           v-model="form.name"
-          @enter="confirmClicked"
+          @enter="runConfirmation"
           v-focus
-        >
-        </text-field>
-        <combobox
+        />
+        <combobox v-if="productionToEdit && productionToEdit.id"
           :label="$t('productions.fields.status')"
-          :options="getProductionStatusOptions"
+          :options="productionStatusOptions"
           localeKeyPrefix="productions.status."
+          @enter="runConfirmation"
           v-model="form.project_status_id"
-        >
-        </combobox>
+        />
+        <text-field v-if="productionToEdit && productionToEdit.id"
+          ref="fpsField"
+          :label="$t('productions.fields.fps')"
+          v-model="form.fps"
+          @enter="runConfirmation"
+          v-focus
+        />
+        <text-field v-if="productionToEdit && productionToEdit.id"
+          ref="ratioField"
+          :label="$t('productions.fields.ratio')"
+          v-model="form.ratio"
+          @enter="runConfirmation"
+          v-focus
+        />
+        <text-field v-if="productionToEdit && productionToEdit.id"
+          ref="resolutionField"
+          :label="$t('productions.fields.resolution')"
+          v-model="form.resolution"
+          @enter="runConfirmation"
+          v-focus
+        />
+
+        <div v-if="productionToEdit && productionToEdit.id">
+          <span class="label">{{ $t("productions.picture") }}</span>
+          <file-upload
+            ref="fileField"
+            :label="$t('main.csv.upload_file')"
+            accept=".png,.jpg,.jpeg"
+            @fileselected="onFileSelected"
+          />
+        </div>
       </form>
 
-      <p class="has-text-right">
-        <a
-          :class="{
-            button: true,
-            'is-primary': true,
-            'is-loading': isLoading
-          }"
-          @click="confirmClicked">
-          {{ $t("main.confirmation") }}
-        </a>
-        <router-link
-          :to="cancelRoute"
-          class="button is-link">
-          {{ $t("main.cancel") }}
-        </router-link>
-      </p>
+      <modal-footer
+        :error-text="$t('productions.edit_error')"
+        :is-error="isError"
+        :is-loading="isLoading"
+        @confirm="runConfirmation"
+        @cancel="$emit('cancel')"
+      />
+
     </div>
   </div>
 </div>
@@ -54,51 +77,84 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
-import TextField from '../widgets/TextField'
-import Combobox from '../widgets/Combobox'
+import { modalMixin } from '@/components/modals/base_modal'
+
+import Combobox from '@/components/widgets/Combobox'
+import ModalFooter from '@/components/modals/ModalFooter'
+import FileUpload from '@/components/widgets/FileUpload'
+import TextField from '@/components/widgets/TextField'
+import { PRODUCTION_TYPE_OPTIONS } from '@/lib/productions'
 
 export default {
   name: 'edit-production-modal',
+  mixins: [modalMixin],
   components: {
-    TextField,
-    Combobox
+    Combobox,
+    FileUpload,
+    ModalFooter,
+    TextField
   },
 
   props: [
-    'onConfirmClicked',
     'text',
     'active',
-    'cancelRoute',
     'isLoading',
     'isError',
     'errorText',
     'productionToEdit'
   ],
 
-  watch: {
-    productionToEdit () {
-      if (this.productionToEdit) {
-        this.form.name = this.productionToEdit.name
-        this.form.project_status_id = this.productionToEdit.project_status_id
-      }
-    }
-  },
-
   data () {
-    if (this.productionToEdit) {
-      return {
-        form: {
-          name: '',
-          project_status_id: this.productionToEdit.project_status_id
+    const data = {
+      formData: null,
+      productionTypeOptions: [
+        {
+          label: 'short',
+          value: 'short'
+        },
+        {
+          label: 'featurefilm',
+          value: 'featurefilm'
+        },
+        {
+          label: 'tvshow',
+          value: 'tvshow'
         }
+      ]
+    }
+
+    if (this.productionToEdit && this.productionToEdit.id) {
+      data.form = {
+        name: this.productionToEdit.name,
+        project_status_id: this.productionToEdit.project_status_id,
+        fps: this.productionToEdit.fps,
+        ratio: this.productionToEdit.ratio,
+        resolution: this.productionToEdit.resolution,
+        production_type: this.productionToEdit.production_type || 'short'
       }
     } else {
-      return {
-        form: {
-          name: '',
-          project_status_id: ''
-        }
+      data.form = {
+        name: '',
+        project_status_id: this.productionStatus ? this.productionStatus[0].id : null,
+        fps: '',
+        ratio: '',
+        resolution: '',
+        production_type: 'short'
       }
+    }
+
+    return data
+  },
+
+  created () {
+    this.resetForm()
+
+    this.productionTypeOptions = PRODUCTION_TYPE_OPTIONS
+  },
+
+  mounted () {
+    if (this.productionStatus.length > 0) {
+      this.form.project_status_id = this.productionStatus[0].id
     }
   },
 
@@ -106,37 +162,70 @@ export default {
     ...mapGetters([
       'productions',
       'productionStatus',
-      'getProductionStatusOptions'
+      'productionStatusOptions'
     ])
   },
 
   methods: {
     ...mapActions([
     ]),
-    confirmClicked () {
+
+    runConfirmation () {
       this.$emit('confirm', this.form)
+    },
+
+    onFileSelected (formData) {
+      this.formData = formData
+      this.$emit('fileselected', formData)
+    },
+
+    resetForm () {
+      if (this.productionToEdit && this.productionToEdit.id) {
+        this.form = {
+          name: this.productionToEdit.name,
+          project_status_id: this.productionToEdit.project_status_id,
+          fps: this.productionToEdit.fps,
+          ratio: this.productionToEdit.ratio,
+          resolution: this.productionToEdit.resolution,
+          production_type: this.productionToEdit.production_type || 'short'
+        }
+        this.form.project_status_id = null
+        this.$nextTick(() => {
+          this.form.project_status_id = this.productionToEdit.project_status_id
+        })
+      } else {
+        this.form = {
+          name: '',
+          project_status_id: this.productionStatusOptions[0].value,
+          fps: '',
+          ratio: '',
+          resolution: '',
+          production_type: 'short'
+        }
+      }
     }
   },
 
-  mounted () {
-    if (this.productionStatus.length > 0) {
-      this.form.project_status_id = this.productionStatus[0].id
+  watch: {
+    productionToEdit () {
+      this.resetForm()
+    },
+
+    active () {
+      if (this.active) {
+        setTimeout(() => {
+          this.$refs.nameField.focus()
+          this.formData = null
+          if (this.$refs.fileField) this.$refs.fileField.reset()
+        }, 100)
+      }
     }
   }
 }
 </script>
 
-<style scoped>
-.modal-content .box p.text {
-  margin-bottom: 1em;
-}
-.is-danger {
-  color: #ff3860;
-  font-style: italic;
-}
-.title {
-  border-bottom: 2px solid #DDD;
-  padding-bottom: 0.5em;
-  margin-bottom: 1.2em;
+<style lang="scss" scoped>
+.box {
+  padding-bottom: 1.5em;
 }
 </style>
