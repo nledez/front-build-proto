@@ -14,9 +14,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-      - name: build
+      - name: Build release
         run: |
-          set -x
           npm install
           npm run build
           wget https://github.com/cgwire/kitsu/raw/build/index.html
@@ -30,35 +29,27 @@ jobs:
           ARTEFACT_FILENAME="kitsu-${KITSU_VERSION}.tgz"
           tar cvzf "${ARTEFACT_FILENAME}" dist index.html package.json
           sha512sum "${ARTEFACT_FILENAME}" > "${CHECKSUM_FILENAME}"
-          mv dist ${ARTEFACT_FILENAME} ${CHECKSUM_FILENAME} ..
-          # echo "==== git checkout build"
-          git checkout build
-          # ls -alrt
-          # git pull --rebase origin build
-          git reset --hard origin/build
-          # ls -alrt
-          test -d dist && git rm -rf dist
-          # ls -alrt
-          test -d dist && rm -rf dist
-          # ls -alrt
-          mv ../dist .
-          mv ../${ARTEFACT_FILENAME} .
-          mv ../${CHECKSUM_FILENAME} .
-          # ls -alrt
-          git add -f dist
-          git config --global user.email "no-reply@cg-wire.com"
-          git config --global user.name "CGWire bot"
-          git commit -m "New release (${KITSU_VERSION})"
-          git tag ${KITSU_VERSION}-build
-          # git push origin build --tag
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: build
       - name: Create release
         uses: ncipollo/release-action@v1
         id: create_release
         with:
           artifacts: "kitsu-*.tgz,kitsu-*.SHA512"
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update "build" branch
+        run: |
+          mv dist ..
+          git checkout build
+          git reset --hard origin/build
+          test -d dist && git rm -rf dist
+          test -d dist && rm -rf dist
+          mv ../dist .
+          git add -f dist
+          git config --global user.email "no-reply@cg-wire.com"
+          git config --global user.name "CGWire bot"
+          git commit -m "New release (${KITSU_VERSION})"
+          git tag ${KITSU_VERSION}-build
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: build
