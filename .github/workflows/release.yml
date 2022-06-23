@@ -37,6 +37,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Update "build" branch
         run: |
+          KITSU_VERSION="$(cat dist/.version.txt)"
           mv dist ..
           git checkout build
           git reset --hard origin/build
@@ -47,8 +48,7 @@ jobs:
           git config --global user.email "no-reply@cg-wire.com"
           git config --global user.name "CGWire bot"
           git commit -m "New release (${KITSU_VERSION})"
-          echo "git tag ${KITSU_VERSION}-build"
-          git tag "${KITSU_VERSION}-build"
+          git tag ${KITSU_VERSION}-build
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
