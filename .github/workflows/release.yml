@@ -18,6 +18,8 @@ jobs:
         run: |
           npm install
           npm run build
+          wget https://github.com/cgwire/kitsu/raw/build/index.html
+          wget https://github.com/cgwire/kitsu/raw/build/package.json
           ls -l
           (cd dist ; ls -alrt)
           GIT_COMMIT="$(git rev-parse HEAD)"
