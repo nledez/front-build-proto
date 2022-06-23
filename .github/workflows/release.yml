@@ -19,7 +19,6 @@ jobs:
           npm install
           npm run build
           wget https://github.com/cgwire/kitsu/raw/build/index.html
-          wget https://github.com/cgwire/kitsu/raw/build/package.json
           ls -l
           (cd dist ; ls -alrt)
           GIT_COMMIT="$(git rev-parse HEAD)"
@@ -36,4 +35,5 @@ jobs:
         uses: ncipollo/release-action@v1
         id: create_release
         with:
+          artifacts: kitsu-*.tgz kitsu-*.SHA512
           token: ${{ secrets.GITHUB_TOKEN }}
