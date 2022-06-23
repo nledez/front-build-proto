@@ -30,26 +30,33 @@ jobs:
           ARTEFACT_FILENAME="kitsu-${KITSU_VERSION}.tgz"
           tar cvzf "${ARTEFACT_FILENAME}" dist index.html package.json
           sha512sum "${ARTEFACT_FILENAME}" > "${CHECKSUM_FILENAME}"
-          mv dist ..
+          mv dist ${ARTEFACT_FILENAME} ${CHECKSUM_FILENAME} ..
           # echo "==== git checkout build"
           git checkout build
-          ls -alrt
+          # ls -alrt
           # git pull --rebase origin build
           git reset --hard origin/build
-          ls -alrt
+          # ls -alrt
           test -d dist && git rm -rf dist
-          ls -alrt
+          # ls -alrt
           test -d dist && rm -rf dist
-          ls -alrt
+          # ls -alrt
           mv ../dist .
-          ls -alrt
+          mv ../${ARTEFACT_FILENAME} .
+          mv ../${CHECKSUM_FILENAME} .
+          # ls -alrt
           git add -f dist
           git config --global user.email "no-reply@cg-wire.com"
           git config --global user.name "CGWire bot"
           git commit -m "New release (${KITSU_VERSION})"
           git tag ${KITSU_VERSION}-build
-          git push origin build --tag
-      - name: release
+          # git push origin build --tag
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: build
+      - name: Create release
         uses: ncipollo/release-action@v1
         id: create_release
         with:
