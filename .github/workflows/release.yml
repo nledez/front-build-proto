@@ -30,13 +30,16 @@ jobs:
           tar cvzf "${ARTEFACT_FILENAME}" dist index.html package.json
           sha512sum "${ARTEFACT_FILENAME}" > "${CHECKSUM_FILENAME}"
           mv dist ..
-          echo "==== git checkout build"
+          # echo "==== git checkout build"
           git checkout build
-          ls -alrt
+          # ls -alrt
           git pull --rebase origin build
-          rm -rf dist
+          test -d dist || git rm -rf dist
+          test -d dist || rm -rf dist
           mv ../dist .
-          git add dist
+          git add -f dist
+          git config --global user.email "no-reply@cg-wire.com"
+          git config --global user.name "CGWire bot"
           git commit -m "New release (${KITSU_VERSION})"
           git tag ${KITSU_VERSION}-build
           git push origin build --tag
