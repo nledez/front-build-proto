@@ -27,7 +27,7 @@ jobs:
           echo "${GIT_TAG}"       > dist/.tag.txt
           CHECKSUM_FILENAME="kitsu-${KITSU_VERSION}.SHA512"
           ARTEFACT_FILENAME="kitsu-${KITSU_VERSION}.tgz"
-          tar cvzf "${ARTEFACT_FILENAME}" dist index.html package.json
+          (cd dist && tar cvzf "../${ARTEFACT_FILENAME}" .)
           sha512sum "${ARTEFACT_FILENAME}" > "${CHECKSUM_FILENAME}"
       - name: Create release
         uses: ncipollo/release-action@v1
