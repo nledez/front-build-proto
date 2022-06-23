@@ -16,6 +16,7 @@ jobs:
       - uses: actions/checkout@v1
       - name: build
         run: |
+          set -x
           npm install
           npm run build
           wget https://github.com/cgwire/kitsu/raw/build/index.html
@@ -32,11 +33,15 @@ jobs:
           mv dist ..
           # echo "==== git checkout build"
           git checkout build
-          # ls -alrt
+          ls -alrt
           git pull --rebase origin build
+          ls -alrt
           test -d dist || git rm -rf dist
+          ls -alrt
           test -d dist || rm -rf dist
+          ls -alrt
           mv ../dist .
+          ls -alrt
           git add -f dist
           git config --global user.email "no-reply@cg-wire.com"
           git config --global user.name "CGWire bot"
