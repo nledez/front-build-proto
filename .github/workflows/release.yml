@@ -19,8 +19,6 @@ jobs:
           npm install
           npm run build
           wget https://github.com/cgwire/kitsu/raw/build/index.html
-          ls -l
-          (cd dist ; ls -alrt)
           GIT_COMMIT="$(git rev-parse HEAD)"
           GIT_TAG="$(git describe --tags)"
           KITSU_VERSION="$(echo ${GIT_TAG} | sed 's/-build//')"
@@ -31,6 +29,7 @@ jobs:
           ARTEFACT_FILENAME="kitsu-${KITSU_VERSION}.tgz"
           tar cvzf "${ARTEFACT_FILENAME}" dist index.html package.json
           sha512sum "${ARTEFACT_FILENAME}" > "${CHECKSUM_FILENAME}"
+          ls -l
       - name: release
         uses: ncipollo/release-action@v1
         id: create_release
