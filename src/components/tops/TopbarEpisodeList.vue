@@ -1,47 +1,57 @@
 <template>
-<div :class="{
-  'topbar-menuitem': true,
-  'topbar-menuitem-open': showEpisodeList
-}">
   <div
-    class="episode-menu"
+    :class="{
+      'topbar-menuitem': true,
+      'topbar-menuitem-open': showEpisodeList
+    }"
   >
-    <div
-      class="flexrow unselectable root-menu"
-      @click="toggleEpisodeList"
-    >
-      <div
-        class="selected-production-line flexrow-item"
-      >
-        {{ episodeLabel }}
+    <div class="episode-menu">
+      <div class="flexrow unselectable root-menu" @click="toggleEpisodeList">
+        <div class="selected-production-line flexrow-item">
+          {{ episodeLabel }}
+        </div>
+        <chevron-down-icon class="down-icon flexrow-item" />
       </div>
-      <chevron-down-icon class="down-icon flexrow-item"/>
-    </div>
-    <div
-      class="select-input"
-      ref="select"
-      v-if="showEpisodeList"
-    >
-      <div
-        class="episode-line"
-        v-for="episode in episodeList"
-        @click="selectEpisode(episode)"
-        :key="episode.value"
-      >
-        <router-link
-          :to="getEpisodePath(episode.value)"
+      <div class="select-input" ref="select" v-if="showEpisodeList">
+        <div v-for="(group, index) in episodeGroups" :key="`group-${index}`">
+          <div
+            class="group-name"
+            v-if="showAllMode && group.name && group.name !== 'running'"
+          >
+            {{ $t('episodes.status.' + group.name) }}
+          </div>
+          <template v-if="showAllMode || ['', 'running'].includes(group.name)">
+            <div
+              :key="episode.value"
+              :ref="'episode-' + episode.value"
+              class="episode-line"
+              @click="selectEpisode(episode)"
+              v-for="episode in group.episodeList"
+            >
+              <router-link :to="getEpisodePath(episode.value)">
+                {{ episode.label }}
+              </router-link>
+            </div>
+          </template>
+        </div>
+        <div
+          class="group-name episode-line has-text-centered more-button"
+          @click="showAllMode = true"
+          v-if="!showAllMode"
         >
-          {{ episode.label }}
-        </router-link>
+          +
+        </div>
+        <div
+          class="group-name episode-line has-text-centered more-button"
+          @click="showAllMode = false"
+          v-else
+        >
+          -
+        </div>
       </div>
     </div>
+    <combobox-mask :displayed="showEpisodeList" @click="toggleEpisodeList" />
   </div>
-  <combobox-mask
-    :displayed="showEpisodeList"
-    @click="toggleEpisodeList"
-  />
-</div>
-
 </template>
 
 <script>
@@ -60,61 +70,66 @@ export default {
     ComboboxMask
   },
 
-  data () {
+  data() {
     return {
+      showAllMode: false,
+      lastScrollPosition: 0,
       showEpisodeList: false
     }
   },
 
   props: {
-    episodeList: {
+    episodeGroups: {
       required: true,
       type: Array
     },
-    section: {
-    },
+    section: {},
     episodeId: {
       default: '',
       type: String
     }
   },
 
-  mounted () {
-  },
+  mounted() {},
 
   computed: {
-    ...mapGetters([
-      'episodeMap',
-      'currentProduction'
-    ]),
+    ...mapGetters(['episodeMap', 'currentProduction']),
 
-    episodeLabel () {
-      const option = this.episodeList.find(o => o.value === this.episodeId)
+    episodeLabel() {
+      let option
+      this.episodeGroups.forEach(group => {
+        const result = group.episodeList.find(o => o.value === this.episodeId)
+        if (result) option = result
+      })
       return option ? option.label : ''
     },
 
-    getEpisodePath () {
+    getEpisodePath() {
       const currentProduction = this.currentProduction
       const section = this.section
-      return (episodeId) => {
-        const path = getProductionPath(
-          currentProduction,
-          section,
-          episodeId
-        )
+      return episodeId => {
+        const path = getProductionPath(currentProduction, section, episodeId)
         return path
       }
     }
   },
 
   methods: {
-    selectEpisode (episode) {
+    selectEpisode(episode) {
       this.$emit('input', episode.id)
       this.showEpisodeList = false
     },
 
-    toggleEpisodeList () {
+    toggleEpisodeList() {
+      if (this.showEpisodeList) {
+        this.lastScrollPosition = this.$refs.select.scrollTop
+      }
       this.showEpisodeList = !this.showEpisodeList
+      if (this.showEpisodeList) {
+        this.$nextTick(() => {
+          this.$refs.select.scrollTo({ top: this.lastScrollPosition, left: 0 })
+        })
+      }
     }
   }
 }
@@ -175,18 +190,29 @@ export default {
   cursor: pointer;
   margin: 0;
   border-radius: 5px;
-  margin-right: 10px;
 
   a {
     color: $black;
-    padding: 0.5em ;
+    padding: 0.5em;
     padding-right: 0.8em;
     display: inline-block;
     width: 100%;
   }
 
   &:hover {
-    background: #EEE;
+    background: #eee;
+  }
+}
+
+.group-name {
+  color: $grey;
+  font-size: 0.9em;
+  margin-top: 1em;
+  padding-left: 0.5em;
+  text-transform: uppercase;
+
+  &:first-child {
+    margin-top: 0.5em;
   }
 }
 
@@ -230,5 +256,9 @@ export default {
     border-bottom-left-radius: 0px;
     border-bottom-right-radius: 0px;
   }
+}
+
+.more-button {
+  margin-top: 0;
 }
 </style>

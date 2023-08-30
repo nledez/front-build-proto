@@ -3,11 +3,7 @@
     <p class="flexrow">
       <em class="flexrow-item">{{ $t('logs.preview_files.explaination') }}</em>
       <span class="filler"></span>
-      <button-simple
-        class="flexrow-item"
-        icon="refresh"
-        @click="reload"
-      />
+      <button-simple class="flexrow-item" icon="refresh" @click="reload" />
     </p>
     <template v-if="previewFiles.length === 0 && !previewFilesLoading">
       {{ $t('logs.preview_files.empty_list') }}
@@ -39,7 +35,7 @@ export default {
     PreviewFileList
   },
 
-  data () {
+  data() {
     return {
       previewFilesLoading: true,
       previewFiles: []
@@ -47,13 +43,9 @@ export default {
   },
 
   computed: {
-    ...mapGetters([
-      'personMap',
-      'taskTypeMap',
-      'user'
-    ]),
+    ...mapGetters(['personMap', 'taskTypeMap', 'user']),
 
-    displayedPreviewFiles () {
+    displayedPreviewFiles() {
       return this.previewFiles.filter(
         previewFile => previewFile.status !== 'ready'
       )
@@ -61,27 +53,23 @@ export default {
   },
 
   methods: {
-    ...mapActions([
-      'getTask',
-      'getRunningPreviewFiles',
-      'markPreviewFileAsBroken'
-    ]),
+    ...mapActions(['getRunningPreviewFiles', 'markPreviewFileAsBroken']),
 
-    async reload () {
+    async reload() {
       this.previewFiles = []
       this.previewFilesLoading = true
       this.previewFiles = await this.getRunningPreviewFiles()
       this.previewFilesLoading = false
     },
 
-    async markBrokenClicked (previewFileId) {
+    async markBrokenClicked(previewFileId) {
       const previewFile = this.previewFiles.find(p => p.id === previewFileId)
       previewFile.status = 'broken'
       await this.markPreviewFileAsBroken(previewFileId)
     }
   },
 
-  mounted () {
+  mounted() {
     this.reload()
   }
 }
@@ -98,6 +86,10 @@ export default {
   border-radius: 4px;
 }
 
+em {
+  color: var(--text);
+}
+
 .date {
   font-weight: 500;
 }
@@ -107,14 +99,13 @@ export default {
   min-width: 50px;
 }
 
-.status[data-status="broken"] {
+.status[data-status='broken'] {
   color: white;
   background: $dark-red;
 }
 
-.status[data-status="processing"] {
+.status[data-status='processing'] {
   color: white;
   background: $blue;
 }
-
 </style>

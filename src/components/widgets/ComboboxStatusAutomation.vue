@@ -1,53 +1,42 @@
 <template>
-<div
-  :class="{
-    field: withMargin,
-    'field--narrow': narrow
-  }"
->
-  <label class="label" v-if="label.length > 0">
-    {{ label }}
-  </label>
   <div
-    class="status-automation-combo"
+    :class="{
+      field: withMargin,
+      'field--narrow': narrow
+    }"
   >
-    <div
-      class="flexrow"
+    <label class="label" v-if="label.length > 0">
+      {{ label }}
+    </label>
+    <div class="status-automation-combo">
+      <div class="flexrow" @click="toggleStatusAutomationsList">
+        <div class="selected-status-automation-line flexrow-item">
+          <status-automation-item
+            :status-automation="currentStatusAutomation"
+            v-if="currentStatusAutomation"
+          />
+        </div>
+        <chevron-down-icon class="down-icon flexrow-item" />
+      </div>
+      <div class="select-input" ref="select" v-if="showStatusAutomationsList">
+        <div
+          class="status-automation-line"
+          v-for="statusAutomation in statusAutomationsList"
+          @click="selectStatusAutomation(statusAutomation)"
+          :key="statusAutomation.id"
+        >
+          <status-automation-item
+            :status-automation="statusAutomation"
+            v-if="statusAutomation"
+          />
+        </div>
+      </div>
+    </div>
+    <combobox-mask
+      :displayed="showStatusAutomationsList"
       @click="toggleStatusAutomationsList"
-    >
-      <div
-        class="selected-status-automation-line flexrow-item"
-      >
-        <status-automation-item
-          :status-automation="currentStatusAutomation"
-          v-if="currentStatusAutomation"
-        />
-      </div>
-      <chevron-down-icon class="down-icon flexrow-item"/>
-    </div>
-    <div
-      class="select-input"
-      ref="select"
-      v-if="showStatusAutomationsList"
-    >
-      <div
-        class="status-automation-line"
-        v-for="statusAutomation in statusAutomationsList"
-        @click="selectStatusAutomation(statusAutomation)"
-        :key="statusAutomation.id"
-      >
-        <status-automation-item
-          :status-automation="statusAutomation"
-          v-if="statusAutomation"
-        />
-      </div>
-    </div>
+    />
   </div>
-  <combobox-mask
-    :displayed="showStatusAutomationsList"
-    @click="toggleStatusAutomationsList"
-  />
-</div>
 </template>
 
 <script>
@@ -67,7 +56,7 @@ export default {
     StatusAutomationItem
   },
 
-  data () {
+  data() {
     return {
       showStatusAutomationsList: false
     }
@@ -100,7 +89,7 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     this.selectedStatusAutomation = this.statusAutomation
   },
 
@@ -112,7 +101,7 @@ export default {
       'getTaskType'
     ]),
 
-    currentStatusAutomation () {
+    currentStatusAutomation() {
       if (this.value) {
         return this.statusAutomationMap.get(this.value)
       } else if (this.addPlaceholder) {
@@ -127,12 +116,12 @@ export default {
   },
 
   methods: {
-    selectStatusAutomation (status) {
+    selectStatusAutomation(status) {
       this.$emit('input', status.id)
       this.showStatusAutomationsList = false
     },
 
-    backgroundColor (statusAutomation) {
+    backgroundColor(statusAutomation) {
       if (
         (!statusAutomation || statusAutomation.is_default) &&
         !this.isDarkTheme
@@ -150,15 +139,19 @@ export default {
       }
     },
 
-    color (statusAutomation) {
-      if ((!statusAutomation || !statusAutomation.is_default) || this.isDarkTheme) {
+    color(statusAutomation) {
+      if (
+        !statusAutomation ||
+        !statusAutomation.is_default ||
+        this.isDarkTheme
+      ) {
         return 'white'
       } else {
         return '#333'
       }
     },
 
-    toggleStatusAutomationsList () {
+    toggleStatusAutomationsList() {
       this.showStatusAutomationsList = !this.showStatusAutomationsList
     }
   }
@@ -182,6 +175,7 @@ export default {
 .status-automation-combo {
   background: $white;
   border: 1px solid $light-grey-light;
+  border-radius: 1em;
   user-select: none;
   cursor: pointer;
   margin: 0;
@@ -227,11 +221,14 @@ export default {
   background: $white;
   position: absolute;
   border: 1px solid $light-grey-light;
+  border-bottom-left-radius: 1em;
+  border-bottom-right-radius: 1em;
   z-index: 300;
   margin-left: -1px;
   max-height: 180px;
-  top: 54px;
+  top: 56px;
   left: 0;
+  right: 0;
   overflow-y: auto;
 }
 

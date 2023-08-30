@@ -1,13 +1,20 @@
 <template>
   <div class="login hero is-fullheight">
     <div class="container has-text-centered">
-      <div class="box has-text-left">
+      <div
+        :class="{
+          box: true,
+          'has-text-left': true,
+          'xyz-out': fadeAway
+        }"
+        xyz="fade"
+      >
         <div class="has-text-centered login-header">
           <img src="../../assets/kitsu-text-dark.svg" v-if="isDarkTheme" />
           <img src="../../assets/kitsu-text.svg" v-else />
         </div>
         <form>
-          <div class="field mt2">
+          <div class="field mt2" v-show="!(isMissingOTP || isWrongOTP)">
             <p class="control has-icon">
               <input
                 class="input is-medium email"
@@ -15,13 +22,15 @@
                 :placeholder="$t('login.fields.email')"
                 @input="updateEmail"
                 @keyup.enter="confirmLogIn"
-                v-focus >
+                v-model="email"
+                v-focus
+              />
               <span class="icon">
-                <mail-icon width=20 height=20 />
+                <mail-icon width="20" height="20" />
               </span>
             </p>
           </div>
-          <div class="field">
+          <div class="field" v-show="!(isMissingOTP || isWrongOTP)">
             <p class="control has-icon">
               <input
                 class="input is-medium password"
@@ -29,14 +38,25 @@
                 :placeholder="$t('login.fields.password')"
                 @input="updatePassword"
                 @keyup.enter="confirmLogIn"
-              >
+                v-model="password"
+              />
               <span class="icon">
-                <lock-icon width=20 height=20 />
+                <lock-icon width="20" height="20" />
               </span>
             </p>
           </div>
         </form>
-        <p class="control">
+        <two-factor-authentication
+          v-if="isMissingOTP || isWrongOTP"
+          :preferred-two-fa="preferredTwoFA"
+          :two-fas-enabled="TwoFAsEnabled"
+          :is-loading="isLoginLoading"
+          :email="email"
+          :is-wrong-otp="isWrongOTP"
+          @validate="confirmLogIn"
+          @changed-two-fa="changedTwoFA"
+        />
+        <p v-if="!(isMissingOTP || isWrongOTP)" class="control">
           <a
             :class="{
               button: true,
@@ -46,19 +66,22 @@
             }"
             @click="confirmLogIn"
           >
-            {{ $t("login.login") }}
+            {{ $t('login.login') }}
           </a>
         </p>
-        <p class="control error" v-show="isLoginError">
-          {{ $t("login.login_failed") }}
+        <p class="control error" v-if="isTooMuchLoginFailedAttemps">
+          {{ $t('login.too_many_failed_login_attemps') }}
         </p>
         <p
-          class="has-text-centered"
+          class="control error"
+          v-else-if="isLoginError && !isMissingOTP && !isWrongOTP"
         >
-          <router-link
-            :to="{name: 'reset-password'}"
-          >
-            {{ $t("login.forgot_password")}}
+          {{ $t('login.login_failed') }}
+        </p>
+
+        <p v-if="!(isMissingOTP || isWrongOTP)" class="has-text-centered">
+          <router-link :to="{ name: 'reset-password' }">
+            {{ $t('login.forgot_password') }}
           </router-link>
         </p>
       </div>
@@ -70,53 +93,96 @@
 import { mapGetters, mapActions } from 'vuex'
 import { MailIcon, LockIcon } from 'vue-feather-icons'
 
+import TwoFactorAuthentication from '@/components/widgets/TwoFactorAuthentication.vue'
+
 export default {
   name: 'login',
 
   components: {
     MailIcon,
-    LockIcon
+    LockIcon,
+    TwoFactorAuthentication
   },
 
-  computed: {
-    ...mapGetters([
-      'isDarkTheme',
-      'isLoginLoading',
-      'isLoginError'
-    ])
-  },
-
-  methods: {
-    ...mapActions([
-      'logIn'
-    ]),
-
-    updateEmail (e) {
-      this.$store.dispatch('changeEmail', e.target.value)
-    },
-
-    updatePassword (e) {
-      this.$store.dispatch('changePassword', e.target.value)
-    },
-
-    confirmLogIn () {
-      this.logIn((err, success) => {
-        if (err) {
-          if (err.default_password) {
-            this.$router.push({
-              name: 'reset-change-password',
-              params: { token: err.token }
-            })
-          } else {
-            console.error(err)
-          }
-        }
-        if (success) this.$router.push('/')
-      })
+  data() {
+    return {
+      email: '',
+      password: '',
+      isTooMuchLoginFailedAttemps: false,
+      isWrongOTP: false,
+      isMissingOTP: false,
+      preferredTwoFA: '',
+      TwoFAsEnabled: [],
+      fadeAway: false
     }
   },
 
-  metaInfo () {
+  mounted() {
+    this.fadeAway = false
+    this.email = this.$store.state.login.email
+    this.password = this.$store.state.login.password
+  },
+
+  computed: {
+    ...mapGetters(['isDarkTheme', 'isLoginLoading', 'isLoginError'])
+  },
+
+  methods: {
+    ...mapActions(['logIn']),
+
+    updateEmail(e) {
+      this.$store.dispatch('changeEmail', e.target.value)
+    },
+
+    updatePassword(e) {
+      this.$store.dispatch('changePassword', e.target.value)
+    },
+
+    confirmLogIn(twoFactorPayload) {
+      this.isTooMuchLoginFailedAttemps = false
+      this.isWrongOTP = false
+      this.isMissingOTP = false
+      this.logIn({
+        twoFactorPayload: twoFactorPayload,
+        callback: (err, success) => {
+          if (err) {
+            if (err.default_password) {
+              this.$router.push({
+                name: 'reset-change-password',
+                query: { email: this.email, token: err.token }
+              })
+            } else if (err.too_many_failed_login_attemps) {
+              this.isTooMuchLoginFailedAttemps = true
+            } else if (err.wrong_OTP) {
+              this.isWrongOTP = true
+            } else if (err.missing_OTP) {
+              this.isMissingOTP = true
+              this.preferredTwoFA = err.preferred_two_factor_authentication
+              this.TwoFAsEnabled = err.two_factor_authentication_enabled
+            } else {
+              console.error(err)
+            }
+          }
+          if (success) {
+            this.fadeAway = true
+            setTimeout(() => {
+              if (this.$route.query.redirect) {
+                this.$router.push(this.$route.query.redirect)
+              } else {
+                this.$router.push('/')
+              }
+            }, 500)
+          }
+        }
+      })
+    },
+
+    changedTwoFA(twoFA) {
+      this.isWrongOTP = false
+    }
+  },
+
+  metaInfo() {
     return {
       title: this.$t('login.title')
     }
@@ -125,11 +191,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.dark {
-  .login-header img {
-  }
-}
-
 .box {
   border-radius: 1em;
 
@@ -173,6 +234,12 @@ export default {
 
 .icon {
   padding: 0.25em;
+}
+
+@media (max-width: 1600px) {
+  .box {
+    margin-top: 4em;
+  }
 }
 
 @media (min-width: 500px) {

@@ -1,430 +1,441 @@
 <template>
-<div ref="container" class="preview-player dark" tabindex="-1">
-  <div
-    class="preview"
-    :style="{height: defaultHeight + 'px'}"
-  >
-    <div class="flexrow filler">
-      <div class="preview-container filler" ref="preview-container">
-        <div
-          class="canvas-wrapper"
-          ref="canvas-wrapper"
-          oncontextmenu="return false;"
-        >
-          <canvas
-            id="annotation-canvas"
-            ref="annotation-canvas"
-            class="canvas"
+  <div ref="container" class="preview-player dark" tabindex="-1">
+    <div class="preview filler">
+      <div class="flexrow filler">
+        <div class="preview-container filler" ref="preview-container">
+          <div
+            class="canvas-wrapper"
+            ref="canvas-wrapper"
+            oncontextmenu="return false;"
+            @click="onCanvasClicked"
+            v-show="!isZoomPan"
           >
-          </canvas>
-        </div>
-        <div class="viewers">
-          <preview-viewer
-            ref="preview-viewer"
-            name="player1"
-            class="preview-viewer"
-            :big="big"
-            :default-height="defaultHeight"
-            :full-screen="fullScreen"
-            :is-hd="isHd"
-            :is-comparing="isComparing && isComparisonEnabled"
-            :is-muted="isMuted"
-            :is-ordering="isOrdering"
-            :is-repeating="isRepeating"
-            :light="light"
-            :preview="currentPreview"
-            @duration-changed="changeMaxDuration"
-            @play-ended="pause"
-            @size-changed="fixCanvasSize"
-            @frame-update="updateFrame"
-            @video-end="onVideoEnd"
-          />
-
-          <preview-viewer
-            ref="comparison-preview-viewer"
-            name="player2"
-            class="comparison-preview-viewer"
-            :big="big"
-            :default-height="defaultHeight"
-            :full-screen="fullScreen"
-            :is-comparing="isComparing && isComparisonEnabled"
-            :is-muted="true"
-            :is-repeating="isRepeating"
-            :light="light"
-            :preview="previewToCompare"
-            v-show="isComparing && previewToCompare"
-          />
-        </div>
-      </div>
-
-      <task-info
-        name="task-info"
-        ref="task-info-player"
-        :class="{
-          'flexrow-item': true,
-          'task-info-column': true,
-          'hidden': isCommentsHidden
-        }"
-        :task="task"
-        :is-preview="false"
-        :current-time-raw="currentTimeRaw"
-        :current-parent-preview="currentPreview"
-        @comment-added="$emit('comment-added')"
-        @time-code-clicked="timeCodeClicked"
-      />
-    </div>
-
-  </div>
-  <div class="button-bar" ref="button-bar">
-    <video-progress
-      ref="progress"
-      class="video-progress pull-bottom"
-      :annotations="annotations"
-      :frame-duration="frameDuration"
-      :nb-frames="nbFrames"
-      :width="width"
-      @start-scrub="$refs['button-bar'].classList.add('unselectable')"
-      @end-scrub="$refs['button-bar'].classList.remove('unselectable')"
-      @progress-changed="onProgressChanged"
-      v-show="isMovie"
-    />
-
-    <div class="buttons flexrow pull-bottom" ref="buttons">
-      <div class="left flexrow" v-if="isMovie || isSound">
-        <button-simple
-          class="flexrow-item"
-          :title="$t('playlists.actions.play')"
-          icon="play"
-          @click="onPlayPauseClicked"
-          v-if="!isPlaying"
-        />
-        <button-simple
-          class="flexrow-item"
-          :title="$t('playlists.actions.pause')"
-          icon="pause"
-          @click="onPlayPauseClicked"
-          v-else
-        />
-      </div>
-
-      <div class="left flexrow" v-if="isMovie">
-        <button-simple
-          :active="isRepeating"
-          :title="$t('playlists.actions.looping')"
-          icon="repeat"
-          @click="onRepeatClicked"
-          v-if="!light || fullScreen"
-        />
-        <button-simple
-          class="flexrow-item"
-          :title="$t('playlists.actions.unmute')"
-          icon="soundoff"
-          @click="onToggleSoundClicked"
-          v-if="isMuted"
-        />
-        <button-simple
-          class="flexrow-item"
-          :title="$t('playlists.actions.mute')"
-          icon="soundon"
-          @click="onToggleSoundClicked"
-          v-else
-        />
-
-        <span
-          class="flexrow-item time-indicator"
-          :title="$t('playlists.actions.current_time')"
-        >
-          {{ currentTime }}
-        </span>
-        <span
-          class="flexrow-item time-indicator"
-          v-if="fullScreen"
-        >
-        /
-        </span>
-        <span
-          class="flexrow-item time-indicator"
-          :title="$t('playlists.actions.max_duration')"
-          v-if="fullScreen"
-        >
-         {{ maxDuration }}
-        </span>
-
-        <div
-          class="flexrow-item time-indicator mr1"
-          :title="$t('playlists.actions.frame_number')"
-        >
-          <span v-if="light">({{ currentFrame }})</span>
-          <span v-else>
-            ({{ currentFrame }} / {{ (nbFrames + '').padStart(3, '0') }})
-          </span>
-        </div>
-      </div>
-
-      <div class="flexrow flexrow-item">
-        <button-simple
-          class="ml1"
-          :active="isComparing"
-          icon="compare"
-          :title="$t('playlists.actions.split_screen')"
-          @click="onCompareClicked"
-          v-if="taskTypeOptions.length > 0 && isComparisonEnabled"
-        />
-
-        <combobox
-          class="comparison-combobox dark"
-          :options="taskTypeOptions"
-          :is-dark="true"
-          :thin="true"
-          v-model="taskTypeId"
-          v-if="isComparing && (!light || isComparisonEnabled)"
-        />
-        <combobox
-          class="comparison-combobox dark"
-          :options="previewFileOptions"
-          :is-dark="true"
-          :thin="true"
-          v-model="previewToCompareId"
-          v-if="isComparing && (!light || isComparisonEnabled)"
-        />
-      </div>
-
-      <div class="filler"></div>
-
-      <div
-        class="entity-name mr1"
-        v-if="fullScreen && task"
-      >
-        {{ task.entity_name }}
-      </div>
-
-      <div
-        class="separator"
-        v-if="fullScreen"
-      >
-      </div>
-
-      <div class="flexrow">
-        <div class="flexrow" v-if="isMovie || isPicture">
-          <button-simple
-            class="flexrow-item"
-            icon="undo"
-            :title="$t('playlists.actions.annotation_undo')"
-            v-if="!readOnly && fullScreen"
-            @click="undoLastAction"
-          />
-
-          <button-simple
-            class="flexrow-item flexrow-item"
-            :title="$t('playlists.actions.annotation_redo')"
-            icon="redo"
-            v-if="!readOnly && fullScreen"
-            @click="redoLastAction"
-          />
-
-          <button-simple
-            class="flexrow-item"
-            icon="remove"
-            :title="$t('playlists.actions.annotation_delete')"
-            @click="onDeleteClicked"
-            v-if="!readOnly && fullScreen"
-          />
-
-          <transition name="slide">
-            <div
-              class="annotation-tools"
-              v-show="isTyping && (!light || fullScreen)"
-            >
-              <color-picker
-                :isOpen="isShowingPalette"
-                :color="this.textColor"
-                @TogglePalette="onPickColor"
-                @change="onChangeTextColor"
-              />
+            <div v-show="isAnnotationsDisplayed">
+              <canvas ref="annotation-canvas" :id="canvasId" class="canvas">
+              </canvas>
             </div>
-          </transition>
+          </div>
+          <div class="viewers">
+            <preview-viewer
+              ref="preview-viewer"
+              name="player1"
+              class="preview-viewer"
+              :big="big"
+              :default-height="defaultHeight"
+              :margin-bottom="marginBottom"
+              :full-screen="fullScreen"
+              :is-comparing="isComparing && isComparisonEnabled"
+              :is-hd="isHd"
+              :is-muted="isMuted"
+              :is-ordering="isOrdering"
+              :is-repeating="isRepeating"
+              :light="light"
+              :preview="currentPreview"
+              @duration-changed="changeMaxDuration"
+              @play-ended="pause"
+              @size-changed="fixCanvasSize"
+              @frame-update="updateFrame"
+              @video-end="onVideoEnd"
+            />
 
-          <button-simple
-            class="flexrow-item"
-            icon="type"
-            :active="isTyping"
-            :title="$t('playlists.actions.annotation_text')"
-            @click="onTypeClicked"
-            v-if="!readOnly && (!light || fullScreen)"
-          />
-
-          <transition name="slide">
-            <div
-              class="annotation-tools"
-              v-show="isDrawing && (!light || fullScreen)"
-            >
-              <pencil-picker
-                :isOpen="isShowingPencilPalette"
-                :pencil="pencil"
-                :sizes="this.pencilPalette"
-                @toggle-palette="onPickPencil"
-                @change="onChangePencil"
-              />
-
-              <color-picker
-                :isOpen="isShowingPalette"
-                :color="this.color"
-                @TogglePalette="onPickColor"
-                @change="onChangeColor"
-              />
-            </div>
-          </transition>
-
-          <button-simple
-            class="flexrow-item"
-            icon="pencil"
-            :active="isDrawing"
-            :title="$t('playlists.actions.annotation_draw')"
-            @click="onPencilAnnotateClicked"
-            v-if="!readOnly && (!light || fullScreen)"
-          />
-
-          <button-simple
-            class="button playlist-button flexrow-item"
-            :title="$t('playlists.actions.comments')"
-            @click="onCommentClicked"
-            icon="comment"
-            v-if="!readOnly && fullScreen"
-          />
-        </div>
-
-        <div
-          class="separator"
-          v-if="!readOnly && fullScreen && isPicture"
-        >
-        </div>
-
-        <a
-          class="button flexrow-item"
-          :href="originalPath"
-          :title="$t('playlists.actions.see_original_file')"
-          target="blank"
-          v-if="!readOnly && isPicture"
-        >
-          <arrow-up-right-icon class="icon is-small" />
-        </a>
-
-        <div
-          class="separator"
-          v-if="!fullScreen || (fullScreen &&
-                                (previews.length > 1 ||
-                                lastPreviewFiles.length > 1))"
-        >
-        </div>
-
-        <browsing-bar
-          :current-index="currentIndex"
-          :previews="previews"
-          :read-only="readOnly"
-          :light="light"
-          :full-screen="fullScreen"
-          :is-assigned="isAssigned"
-          @add-preview-clicked="$emit('add-extra-preview')"
-          @next-clicked="onNextClicked"
-          @previous-clicked="onPreviousClicked"
-          @remove-preview-clicked="onRemovePreviewClicked"
-          @current-index-clicked="isOrdering = !isOrdering"
-          v-if="currentPreview"
-        />
-
-        <div class="flexrow">
-          <div class="flexrow" v-if="fullScreen">
-            <span
-              :class="{
-                'previous-preview-file': true,
-                'current-preview-file': isCurrentRevision(previewFile)
-              }"
-              :key="`last-preview-${previewFile.id}`"
-              :title="getRevisionTitle(previewFile)"
-              @click="changeCurrentPreview(previewFile)"
-              v-for="previewFile in lastPreviewFiles"
-            >
-              {{ previewFile.revision }}
-            </span>
+            <preview-viewer
+              ref="comparison-preview-viewer"
+              name="player2"
+              class="comparison-preview-viewer"
+              :big="big"
+              :default-height="defaultHeight"
+              :margin-bottom="marginBottom"
+              :full-screen="fullScreen"
+              :is-comparing="isComparing && isComparisonEnabled"
+              :is-hd="isHd"
+              :is-muted="true"
+              :is-repeating="isRepeating"
+              :light="light"
+              :preview="previewToCompare"
+              v-show="isComparing && previewToCompare"
+            />
           </div>
         </div>
 
-        <div
-          class="separator"
-          v-if="lastPreviewFiles.length > 1 && fullScreen"
-        >
-        </div>
-
-        <button-simple
-          class="flexrow-item"
-          :title="$t('playlists.actions.' + (isHd ? 'switch_ld' : 'switch_hd'))"
-          :text="isHd ? 'HD' : 'LD'"
-          @click="isHd = !isHd"
-          v-if="fullScreen && isMovie"
-        />
-
-        <a
-          class="button flexrow-item"
-          :href="originalDlPath"
-          :title="$t('playlists.actions.download_file')"
-        >
-          <download-icon class="icon is-small" />
-        </a>
-
-        <button-simple
-          class="flexrow-item"
-          :title="$t('playlists.actions.fullscreen')"
-          icon="maximize"
-          v-if="isFullScreenEnabled"
-          @click="onFullscreenClicked"
+        <task-info
+          name="task-info"
+          ref="task-info-player"
+          :class="{
+            'flexrow-item': true,
+            'task-info-column': true,
+            hidden: isCommentsHidden
+          }"
+          :task="task"
+          :is-preview="false"
+          :current-time-raw="currentTimeRaw"
+          :current-parent-preview="currentPreview"
+          @comment-added="$emit('comment-added')"
+          @time-code-clicked="timeCodeClicked"
         />
       </div>
     </div>
-  </div>
-
-  <div
-    class="flexrow revision-previews"
-    ref="revision-previews"
-    v-if="(!light || fullScreen) && isOrdering"
-  >
-    <div
-      class="flexrow-item revision-preview"
-      :key="preview.id"
-      v-for="(preview, index) in previews"
-    >
-      <revision-preview
-        :preview-file="preview"
-        :index="index"
-        :is-selected="currentPreview.id === preview.id"
-        @selected="onRevisionPreviewSelected(index + 1)"
-        @preview-dropped="onRevisionPreviewDropped"
+    <div class="button-bar" ref="button-bar">
+      <video-progress
+        ref="progress"
+        class="video-progress pull-bottom"
+        :annotations="annotations"
+        :frame-duration="frameDuration"
+        :nb-frames="nbFrames"
+        :width="width"
+        :handle-in="-1"
+        :handle-out="-1"
+        @start-scrub="$refs['button-bar'].classList.add('unselectable')"
+        @end-scrub="$refs['button-bar'].classList.remove('unselectable')"
+        @progress-changed="onProgressChanged"
+        v-show="isMovie"
       />
-    </div>
-  </div>
 
-  <!-- used only for picture saving purpose, it is not displayed -->
-  <canvas id="annotation-snapshot" ref="annotation-snapshot">
-  </canvas>
-  <canvas id="resize-annotation-canvas" ref="resize-annotation-canvas">
-  </canvas>
-  <!-- end -->
-</div>
+      <div class="buttons flexrow pull-bottom" ref="buttons">
+        <div class="left flexrow" v-if="isMovie || isSound">
+          <button-simple
+            class="flexrow-item"
+            :title="$t('playlists.actions.play')"
+            icon="play"
+            @click="onPlayPauseClicked"
+            v-if="!isPlaying"
+          />
+          <button-simple
+            class="flexrow-item"
+            :title="$t('playlists.actions.pause')"
+            icon="pause"
+            @click="onPlayPauseClicked"
+            v-else
+          />
+        </div>
+
+        <div class="left flexrow" v-if="isMovie">
+          <button-simple
+            :active="isRepeating"
+            :title="$t('playlists.actions.looping')"
+            icon="repeat"
+            @click="onRepeatClicked"
+            v-if="!light || fullScreen"
+          />
+          <button-simple
+            class="flexrow-item"
+            :title="
+              $t('playlists.actions.' + (isHd ? 'switch_ld' : 'switch_hd'))
+            "
+            :text="isHd ? 'HD' : 'LD'"
+            @click="isHd = !isHd"
+            v-if="(!light || fullScreen) && isMovie"
+          />
+
+          <button-simple
+            class="flexrow-item"
+            :title="$t('playlists.actions.unmute')"
+            icon="soundoff"
+            @click="onToggleSoundClicked"
+            v-if="isMuted"
+          />
+          <button-simple
+            class="flexrow-item"
+            :title="$t('playlists.actions.mute')"
+            icon="soundon"
+            @click="onToggleSoundClicked"
+            v-else
+          />
+
+          <span
+            class="flexrow-item time-indicator"
+            :title="$t('playlists.actions.current_time')"
+          >
+            {{ currentTime }}
+          </span>
+          <span class="flexrow-item time-indicator" v-if="fullScreen"> / </span>
+          <span
+            class="flexrow-item time-indicator"
+            :title="$t('playlists.actions.max_duration')"
+            v-if="fullScreen"
+          >
+            {{ maxDuration }}
+          </span>
+
+          <div
+            class="flexrow-item time-indicator mr1"
+            :title="$t('playlists.actions.frame_number')"
+          >
+            <span> ({{ currentFrame }}</span
+            ><span v-if="!light || fullScreen"> / </span
+            ><span v-if="!light || fullScreen">{{
+              (nbFrames + '').padStart(3, '0')
+            }}</span
+            >)
+          </div>
+        </div>
+
+        <div class="flexrow flexrow-item">
+          <button-simple
+            class="ml1"
+            :active="isComparing"
+            icon="compare"
+            :title="$t('playlists.actions.split_screen')"
+            @click="onCompareClicked"
+            v-if="taskTypeOptions.length > 0 && isComparisonEnabled"
+          />
+
+          <combobox
+            class="comparison-combobox dark"
+            :options="taskTypeOptions"
+            :is-dark="true"
+            :thin="true"
+            v-model="taskTypeId"
+            v-if="isComparing && (!light || isComparisonEnabled)"
+          />
+          <combobox
+            class="comparison-combobox dark"
+            :options="previewFileOptions"
+            :is-dark="true"
+            :thin="true"
+            v-model="previewToCompareId"
+            v-if="isComparing && (!light || isComparisonEnabled)"
+          />
+        </div>
+
+        <div class="filler"></div>
+
+        <div class="entity-name mr1" v-if="fullScreen && task">
+          {{ task.entity_name }}
+        </div>
+
+        <div class="separator" v-if="fullScreen"></div>
+
+        <div class="flexrow">
+          <div class="flexrow" v-if="isMovie || isPicture">
+            <button-simple
+              class="flexrow-item"
+              icon="undo"
+              :title="$t('playlists.actions.annotation_undo')"
+              v-if="!readOnly && fullScreen"
+              @click="undoLastAction"
+            />
+
+            <button-simple
+              class="flexrow-item flexrow-item"
+              :title="$t('playlists.actions.annotation_redo')"
+              icon="redo"
+              v-if="!readOnly && fullScreen"
+              @click="redoLastAction"
+            />
+
+            <button-simple
+              class="flexrow-item"
+              icon="remove"
+              :title="$t('playlists.actions.annotation_delete')"
+              @click="onDeleteClicked"
+              v-if="!readOnly && fullScreen"
+            />
+
+            <transition name="slide">
+              <div
+                class="annotation-tools"
+                v-show="isTyping && (!light || fullScreen)"
+              >
+                <color-picker
+                  :isOpen="isShowingPalette"
+                  :color="this.textColor"
+                  @TogglePalette="onPickColor"
+                  @change="onChangeTextColor"
+                />
+              </div>
+            </transition>
+
+            <button-simple
+              class="flexrow-item"
+              icon="type"
+              :active="isTyping"
+              :title="$t('playlists.actions.annotation_text')"
+              @click="onTypeClicked"
+              v-if="!readOnly && (!light || fullScreen)"
+            />
+
+            <transition name="slide">
+              <div
+                class="annotation-tools"
+                v-show="isDrawing && (!light || fullScreen)"
+              >
+                <pencil-picker
+                  :isOpen="isShowingPencilPalette"
+                  :pencil="pencil"
+                  :sizes="this.pencilPalette"
+                  @toggle-palette="onPickPencil"
+                  @change="onChangePencil"
+                />
+
+                <color-picker
+                  :isOpen="isShowingPalette"
+                  :color="this.color"
+                  @TogglePalette="onPickColor"
+                  @change="onChangeColor"
+                />
+              </div>
+            </transition>
+
+            <button-simple
+              class="flexrow-item"
+              icon="pencil"
+              :active="isDrawing"
+              :title="$t('playlists.actions.annotation_draw')"
+              @click="onPencilAnnotateClicked"
+              v-if="!readOnly && (!light || fullScreen)"
+            />
+
+            <button-simple
+              icon="pen"
+              :title="$t('playlists.actions.toggle_annotations')"
+              :active="isAnnotationsDisplayed"
+              @click="onAnnotationDisplayedClicked"
+              v-if="(isPicture || isMovie) && (!light || fullScreen)"
+            />
+
+            <button-simple
+              class="flexrow-item"
+              icon="loupe"
+              :active="isZoomPan"
+              :title="$t('playlists.actions.annotation_zoom_pan')"
+              @click="onZoomPanClicked"
+              v-if="!light || fullScreen"
+            />
+
+            <button-simple
+              class="button playlist-button flexrow-item"
+              icon="comment"
+              :title="$t('playlists.actions.comments')"
+              @click="onCommentClicked"
+              v-if="!readOnly && fullScreen"
+            />
+          </div>
+
+          <div
+            class="separator"
+            v-if="!readOnly && fullScreen && isPicture"
+          ></div>
+
+          <a
+            class="button flexrow-item"
+            :href="originalPath"
+            :title="$t('playlists.actions.see_original_file')"
+            target="blank"
+            v-if="!readOnly && isPicture"
+          >
+            <arrow-up-right-icon class="icon is-small" />
+          </a>
+
+          <div
+            class="separator"
+            v-if="
+              !fullScreen ||
+              (fullScreen &&
+                (previews.length > 1 || lastPreviewFiles.length > 1))
+            "
+          ></div>
+
+          <browsing-bar
+            :current-index="currentIndex"
+            :previews="previews"
+            :read-only="readOnly"
+            :light="light"
+            :full-screen="fullScreen"
+            :is-assigned="isAssigned"
+            @add-preview-clicked="$emit('add-extra-preview')"
+            @next-clicked="onNextClicked"
+            @previous-clicked="onPreviousClicked"
+            @remove-preview-clicked="onRemovePreviewClicked"
+            @current-index-clicked="isOrdering = !isOrdering"
+            v-if="currentPreview"
+          />
+
+          <div class="flexrow">
+            <div class="flexrow" v-if="fullScreen">
+              <span
+                :class="{
+                  'previous-preview-file': true,
+                  'current-preview-file': isCurrentRevision(previewFile)
+                }"
+                :key="`last-preview-${previewFile.id}`"
+                :title="getRevisionTitle(previewFile)"
+                @click="changeCurrentPreview(previewFile)"
+                v-for="previewFile in lastPreviewFiles"
+              >
+                {{ previewFile.revision }}
+              </span>
+            </div>
+          </div>
+
+          <div
+            class="separator"
+            v-if="lastPreviewFiles.length > 1 && fullScreen"
+          ></div>
+
+          <a
+            class="button flexrow-item"
+            :href="originalDlPath"
+            :title="$t('playlists.actions.download_file')"
+            v-if="!isCurrentUserArtist"
+          >
+            <download-icon class="icon is-small" />
+          </a>
+
+          <button-simple
+            class="flexrow-item"
+            :title="$t('playlists.actions.fullscreen')"
+            icon="maximize"
+            v-if="isFullScreenEnabled"
+            @click="onFullscreenClicked"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="flexrow revision-previews"
+      ref="revision-previews"
+      v-if="isOrdering"
+    >
+      <div
+        class="flexrow-item revision-preview"
+        :key="preview.id"
+        v-for="(preview, index) in previews"
+      >
+        <revision-preview
+          :preview-file="preview"
+          :index="index"
+          :is-selected="currentPreview.id === preview.id"
+          @selected="onRevisionPreviewSelected(index + 1)"
+          @preview-dropped="onRevisionPreviewDropped"
+        />
+      </div>
+    </div>
+
+    <!-- used only for picture saving purpose, it is not displayed -->
+    <canvas id="annotation-snapshot" ref="annotation-snapshot"> </canvas>
+    <canvas id="resize-annotation-canvas" ref="resize-annotation-canvas">
+    </canvas>
+    <!-- end -->
+  </div>
 </template>
 
 <script>
 import { fabric } from 'fabric'
 import { mapGetters, mapActions } from 'vuex'
-import { formatFrame, formatTime, roundToFrame, floorToFrame } from '@/lib/video'
+import {
+  formatFrame,
+  formatTime,
+  roundToFrame,
+  floorToFrame
+} from '@/lib/video'
 import localPreferences from '@/lib/preferences'
 
 import { annotationMixin } from '@/components/mixins/annotation'
 import { fullScreenMixin } from '@/components/mixins/fullscreen'
 import { domMixin } from '@/components/mixins/dom'
 
-import {
-  ArrowUpRightIcon,
-  DownloadIcon
-} from 'vue-feather-icons'
+import { ArrowUpRightIcon, DownloadIcon } from 'vue-feather-icons'
 import ButtonSimple from '@/components/widgets/ButtonSimple'
 import BrowsingBar from '@/components/previews/BrowsingBar'
 import ColorPicker from '@/components/widgets/ColorPicker'
@@ -434,6 +445,8 @@ import PreviewViewer from '@/components/previews/PreviewViewer'
 import RevisionPreview from '@/components/previews/RevisionPreview'
 import VideoProgress from '@/components/previews/VideoProgress'
 const TaskInfo = () => import('@/components/sides/TaskInfo')
+
+let lastIndex = 1
 
 export default {
   name: 'preview-player',
@@ -454,6 +467,10 @@ export default {
   },
 
   props: {
+    canvasId: {
+      type: String,
+      default: 'annotation-canvas'
+    },
     big: {
       type: Boolean,
       default: false
@@ -496,7 +513,7 @@ export default {
     }
   },
 
-  data () {
+  data() {
     return {
       annotations: [],
       currentIndex: 1,
@@ -504,6 +521,7 @@ export default {
       color: '#ff3860',
       currentTime: '00:00.000',
       currentTimeRaw: 0,
+      isAnnotationsDisplayed: true,
       isCommentsHidden: true,
       isComparing: false,
       isDrawing: false,
@@ -519,17 +537,17 @@ export default {
       pencilPalette: ['big', 'medium', 'small'],
       previewToCompare: null,
       previewToCompareId: null,
-      taskTypeId:
-        this.entityPreviewFIles
-          ? Object.keys(this.entityPreviewFiles)[0]
-          : null,
+      taskTypeId: this.entityPreviewFIles
+        ? Object.keys(this.entityPreviewFiles)[0]
+        : null,
       textColor: '#ff3860',
       videoDuration: 0,
-      width: 0
+      width: 0,
+      isZoomPan: false
     }
   },
 
-  mounted () {
+  mounted() {
     if (!this.container) return
     this.configureEvents()
     this.setupFabricCanvas()
@@ -538,11 +556,12 @@ export default {
     this.resetPreviewFileMap()
     this.initPreferences()
     if (this.isSound || this.is3DModel || this.isFile) {
-      this.fixCanvasSize({ width: 0, height: 0 })
+      // hide canvas
+      this.fixCanvasSize({ width: 0, height: 0, left: 0, top: 0 })
     }
   },
 
-  beforeDestroy () {
+  beforeDestroy() {
     this.endAnnotationSaving()
     this.removeEvents()
   },
@@ -557,33 +576,33 @@ export default {
 
     // Elements
 
-    container () {
+    container() {
       return this.$refs.container
     },
 
-    comparisonViewer () {
+    comparisonViewer() {
       return this.$refs['comparison-preview-viewer']
     },
 
-    canvasWrapper () {
+    canvasWrapper() {
       return this.$refs['canvas-wrapper']
     },
 
-    previewViewer () {
+    previewViewer() {
       return this.$refs['preview-viewer']
     },
 
-    previewContainer () {
+    previewContainer() {
       return this.$refs['preview-container']
     },
 
-    progress () {
+    progress() {
       return this.$refs.progress
     },
 
     // Utils
 
-    frameNumber () {
+    frameNumber() {
       let frameNumber = this.currentTimeRaw / this.frameDuration
       if (frameNumber >= this.nbFrames) {
         frameNumber = this.nbFrames
@@ -591,11 +610,11 @@ export default {
       return Math.round(frameNumber)
     },
 
-    currentFrame () {
+    currentFrame() {
       return formatFrame(this.frameNumber + 1)
     },
 
-    currentPreview () {
+    currentPreview() {
       if (
         this.previews &&
         this.previews.length > 0 &&
@@ -607,13 +626,16 @@ export default {
       }
     },
 
-    defaultHeight () {
+    marginBottom() {
+      let margin = 32 // buttons bar
+      if (this.isMovie) margin += 28 // progress bar
+      if (this.isOrdering) margin += 140 // ordering menu
+      return margin
+    },
+
+    defaultHeight() {
       if (this.fullScreen) {
-        let height = screen.height
-        if (this.isOrdering) height -= 140
-        if (this.isMovie) height -= 60
-        else height -= 30
-        return height
+        return screen.height - this.marginBottom
       } else {
         let bigHeight = screen.height > 800 ? 470 : 300
         if (this.isMovie) bigHeight = screen.height > 800 ? 442 : 272
@@ -623,57 +645,56 @@ export default {
       }
     },
 
-    fps () {
+    fps() {
       return this.currentProduction.fps
-        ? parseInt(this.currentProduction.fps)
+        ? parseFloat(this.currentProduction.fps)
         : 24
     },
 
-    frameDuration () {
+    frameDuration() {
       return Math.round((1 / this.fps) * 10000) / 10000
     },
 
-    extension () {
+    extension() {
       return this.currentPreview ? this.currentPreview.extension : ''
     },
 
-    isPicture () {
+    isPicture() {
       return ['gif', 'png', 'jpg', 'jpeg'].includes(this.extension)
     },
 
-    isMovie () {
+    isMovie() {
       return this.extension === 'mp4'
     },
 
-    is3DModel () {
+    is3DModel() {
       return ['glb', 'gltf'].includes(this.extension)
     },
 
-    isSound () {
+    isSound() {
       return ['mp3', 'wav'].includes(this.extension)
     },
 
-    isPdf () {
+    isPdf() {
       return this.extension === 'pdf'
     },
 
-    isFile () {
+    isFile() {
       return !this.isPicture && !this.isMovie // && !this.is3DModel && !this.isPdf
     },
 
-    isFullScreenEnabled () {
+    isFullScreenEnabled() {
       return !!(
         document.fullscreenEnabled ||
         document.mozFullScreenEnabled ||
         document.msFullscreenEnabled ||
         document.webkitSupportsFullscreen ||
         document.webkitFullscreenEnabled ||
-
         document.createElement('video').webkitRequestFullScreen
       )
     },
 
-    originalPath () {
+    originalPath() {
       if (this.currentPreview) {
         const previewId = this.currentPreview.id
         const extension = this.extension ? this.extension : 'png'
@@ -684,23 +705,26 @@ export default {
       }
     },
 
-    originalDlPath () {
+    originalDlPath() {
       if (this.currentPreview) {
         const type = this.isMovie ? 'movies' : 'pictures'
-        return `/api/${type}/originals/preview-files/` +
-               `${this.currentPreview.id}/download`
+        return (
+          `/api/${type}/originals/preview-files/` +
+          `${this.currentPreview.id}/download`
+        )
       } else {
         return ''
       }
     },
 
-    taskTypeOptions () {
+    taskTypeOptions() {
       if (!this.entityPreviewFiles) return []
       const taskTypeIds = Object.keys(this.entityPreviewFiles)
       return taskTypeIds
-        .filter((taskTypeId) => {
-          const previewFiles = this.entityPreviewFiles[taskTypeId]
-            .filter(p => ['mp4', 'png'].includes(p.extension))
+        .filter(taskTypeId => {
+          const previewFiles = this.entityPreviewFiles[taskTypeId].filter(p =>
+            ['mp4', 'png'].includes(p.extension)
+          )
           return previewFiles.length > 0 && this.taskTypeMap.get(taskTypeId)
         })
         .map(taskTypeId => {
@@ -712,7 +736,7 @@ export default {
         })
     },
 
-    previewFileOptions () {
+    previewFileOptions() {
       if (!this.entityPreviewFiles) return []
       const previewFiles = this.entityPreviewFiles[this.taskTypeId]
       if (previewFiles && previewFiles.length > 0) {
@@ -727,33 +751,32 @@ export default {
       }
     },
 
-    isComparisonEnabled () {
+    isComparisonEnabled() {
       return this.fullScreen || this.extraWide
     },
 
-    nbFrames () {
+    nbFrames() {
       return Math.round(this.videoDuration * this.fps)
     }
   },
 
   methods: {
-    ...mapActions([
-      'refreshPreview',
-      'updateRevisionPreviewPosition'
-    ]),
+    ...mapActions(['refreshPreview', 'updateRevisionPreviewPosition']),
     formatFrame,
     formatTime,
 
-    isCurrentRevision (previewFile) {
+    isCurrentRevision(previewFile) {
       return previewFile.revision === this.currentPreview.revision
     },
 
-    getRevisionTitle (previewFile) {
-      return `${this.$t('playlists.actions.display_revision')}` +
-             ` ${previewFile.revision}`
+    getRevisionTitle(previewFile) {
+      return (
+        `${this.$t('playlists.actions.display_revision')}` +
+        ` ${previewFile.revision}`
+      )
     },
 
-    updateFrame (frameNumber) {
+    updateFrame(frameNumber) {
       const time = frameNumber * this.frameDuration
       if (this.frameNumber !== frameNumber) {
         this.progress.updateProgressBar(frameNumber)
@@ -764,22 +787,27 @@ export default {
       }
     },
 
-    initPreferences () {
-      const isRepeating =
-        localPreferences.getBoolPreference('player:repeating')
+    initPreferences() {
+      const isRepeating = localPreferences.getBoolPreference('player:repeating')
+      const isMuted = localPreferences.getBoolPreference('player:muted')
       this.isRepeating = isRepeating
+      this.isMuted = isMuted
       this.isHd = this.organisation
         ? this.organisation.hd_by_default === 'true'
         : false
     },
 
-    focus () {
+    focus() {
       this.$refs.container.focus()
     },
 
-    timeCodeClicked (
-      { versionRevision, minutes, seconds, milliseconds, frame }
-    ) {
+    timeCodeClicked({
+      versionRevision,
+      minutes,
+      seconds,
+      milliseconds,
+      frame
+    }) {
       const preview = this.lastPreviewFiles.find(
         p => p.revision === parseInt(versionRevision)
       )
@@ -787,39 +815,44 @@ export default {
         return
       }
       this.changeCurrentPreview(preview)
-      const time = parseInt(minutes) * 60 +
+      const time =
+        parseInt(minutes) * 60 +
         parseInt(seconds) +
         parseInt(milliseconds) / 1000
       const frameNumber = Math.round(time / this.frameDuration)
-      setTimeout(this.setCurrentFrame, 20, frameNumber)
+      setTimeout(() => {
+        this.setCurrentFrame(frameNumber)
+      }, 20)
     },
 
     // Video
 
-    configureVideo () {
+    configureVideo() {
       this.isPlaying = false
-      this.isMuted = false
       this.isRepeating = false
     },
 
-    changeMaxDuration (duration) {
+    changeMaxDuration(duration) {
       if (duration) {
         duration = floorToFrame(duration, this.fps)
-        this.videoDuration = duration
-        this.maxDuration =
-          this.formatTime(this.videoDuration - this.frameDuration)
+        const isChromium = !!window.chrome
+        const change = isChromium ? this.frameDuration : 0
+        this.videoDuration = duration + change
+        this.maxDuration = this.formatTime(
+          this.videoDuration - this.frameDuration
+        )
       } else {
         this.maxDuration = '00:00.000'
         this.videoDuration = 0
       }
     },
 
-    getCurrentTime () {
+    getCurrentTime() {
       const currentTimeRaw = this.previewViewer.getCurrentTimeRaw()
       return roundToFrame(currentTimeRaw, this.fps) || 0
     },
 
-    play () {
+    play() {
       this.isPlaying = true
       this.isDrawing = false
       if (this.previewViewer) {
@@ -835,7 +868,7 @@ export default {
       }
     },
 
-    pause () {
+    pause() {
       if (this.isPlaying) {
         this.isPlaying = false
         if (this.previewViewer) this.previewViewer.pause()
@@ -844,35 +877,35 @@ export default {
       }
     },
 
-    goPreviousFrame () {
+    goPreviousFrame() {
       this.clearCanvas()
       this.previewViewer.goPreviousFrame()
       this.syncComparisonViewer()
     },
 
-    goNextFrame () {
+    goNextFrame() {
       this.clearCanvas()
       this.previewViewer.goNextFrame()
       this.syncComparisonViewer()
     },
 
-    syncComparisonViewer () {
+    syncComparisonViewer() {
       if (this.comparisonViewer && this.isComparing) {
-        // Dirty fix: add a missing frame to the comparaison video
+        // Dirty fix: add a missing frame to the comparison video
         this.comparisonViewer.setCurrentTimeRaw(
           this.previewViewer.getCurrentTimeRaw() + this.frameDuration
         )
       }
     },
 
-    onProgressChanged (frameNumber) {
+    onProgressChanged(frameNumber) {
       if (frameNumber !== this.frameNumber) {
         this.clearCanvas()
         this.setCurrentFrame(frameNumber)
       }
     },
 
-    onVideoEnd () {
+    onVideoEnd() {
       this.isPlaying = false
       if (this.isRepeating) {
         this.setCurrentFrame(1)
@@ -883,7 +916,7 @@ export default {
       }
     },
 
-    onPlayPauseClicked () {
+    onPlayPauseClicked() {
       this.clearFocus()
       if (!this.isPlaying) {
         this.play()
@@ -892,24 +925,21 @@ export default {
       }
     },
 
-    onRepeatClicked () {
+    onRepeatClicked() {
       this.clearFocus()
-      if (this.isRepeating) {
-        this.isRepeating = false
-      } else {
-        this.isRepeating = true
-      }
+      this.isRepeating = !this.isRepeating
       localPreferences.setPreference('player:repeating', this.isRepeating)
     },
 
-    onToggleSoundClicked () {
+    onToggleSoundClicked() {
       this.clearFocus()
       this.isMuted = !this.isMuted
+      localPreferences.setPreference('player:muted', this.isMuted)
     },
 
     // Sizing
 
-    getDimensions () {
+    getDimensions() {
       const dimensions = { width: 0, height: 0 }
       if (this.container) {
         dimensions.width = this.container.offsetWidth
@@ -918,42 +948,34 @@ export default {
       return dimensions
     },
 
-    getCurrentPreviewDimensions () {
-      const dim = this.previewViewer.getPreviewDimensions()
-      return dim
-    },
-
-    setupFabricCanvas () {
+    setupFabricCanvas() {
       const dimensions = this.getDimensions()
       const width = dimensions.width
       const height = dimensions.height
-      this.fabricCanvas = new fabric.Canvas('annotation-canvas', {
+      this.fabricCanvas = new fabric.Canvas(this.canvasId, {
         fireRightClick: true,
-        width: width,
-        height: height
+        width,
+        height
       })
+      if (!this.fabricCanvas.freeDrawingBrush) {
+        this.fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(
+          this.fabricCanvas
+        )
+      }
       this.configureCanvas()
     },
 
-    fixCanvasSize (dimensions) {
-      const width = dimensions.width
-      const height = dimensions.height
+    fixCanvasSize(dimensions) {
       if (this.fabricCanvas) {
+        const { height, left, top, width } = dimensions
+
         this.fabricCanvas.setDimensions({ width, height })
         this.fabricCanvas.width = width
         this.fabricCanvas.height = height
-        const containerWidth = this.previewContainer.offsetWidth
-        const containerHeight = this.container.offsetHeight
-        let margin = Math.round((containerWidth - width) / 2)
-        if (this.isComparing) {
-          margin = Math.round(((containerWidth / 2) - width) / 2)
-        }
-        let corrector = this.isMovie ? 60 : 32
-        if (this.isOrdering) corrector += 140
-        const top = Math.round((containerHeight - corrector - height) / 2)
+
         if (this.canvasWrapper) {
           this.canvasWrapper.style.top = top + 'px'
-          this.canvasWrapper.style.left = margin + 'px'
+          this.canvasWrapper.style.left = left + 'px'
           this.canvasWrapper.style.width = width + 'px'
           this.canvasWrapper.style.height = height + 'px'
           setTimeout(() => {
@@ -968,35 +990,33 @@ export default {
 
     // Screen
 
-    setFullScreen () {
+    setFullScreen() {
       this.endAnnotationSaving()
       this.documentSetFullScreen(this.container)
       this.container.setAttribute('data-fullscreen', !!true)
       this.fullScreen = true
       this.$nextTick(() => {
-        this.fixCanvasSize(this.getCurrentPreviewDimensions())
-        // Needed to avoid fullsceen button to be called with space bar.
+        // Needed to avoid fullscreen button to be called with space bar.
         this.clearFocus()
         this.previewViewer.resize()
       })
     },
 
-    exitFullScreen () {
+    exitFullScreen() {
       this.endAnnotationSaving()
       this.documentExitFullScreen()
       this.container.setAttribute('data-fullscreen', !!false)
       this.isComparing = false
       this.fullScreen = false
       this.isCommentsHidden = true
-      this.fixCanvasSize(this.getCurrentPreviewDimensions())
       this.$nextTick(() => {
-        // Needed to avoid fullsceen button to be called with space bar.
+        // Needed to avoid fullscreen button to be called with space bar.
         this.clearFocus()
         this.previewViewer.resize()
       })
     },
 
-    onFullscreenClicked () {
+    onFullscreenClicked() {
       if (this.fullScreen) {
         this.removeTypeArea()
         this.exitFullScreen()
@@ -1006,28 +1026,26 @@ export default {
       }
     },
 
-    onFullScreenChange () {
-      if (
-        this.fullScreen &&
-        !this.isFullScreen()
-      ) {
+    onFullScreenChange() {
+      if (this.fullScreen && !this.isFullScreen()) {
         this.isComparing = false
-        this.isCommentsHidden = true
         this.fullScreen = false
+        this.isCommentsHidden = true
         this.endAnnotationSaving()
         this.$nextTick(() => {
           this.previewViewer.resetVideo()
           this.previewViewer.resetPicture()
-          this.fixCanvasSize(this.getCurrentPreviewDimensions())
-          this.reloadAnnotations()
-          this.loadAnnotation()
+          this.clearFocus()
+          this.$nextTick(() => {
+            this.loadAnnotation()
+          })
         })
       }
     },
 
     // Comparison
 
-    onCompareClicked () {
+    onCompareClicked() {
       this.clearFocus()
       if (this.isComparing) {
         this.isComparing = false
@@ -1042,14 +1060,16 @@ export default {
       }
     },
 
-    setDefaultComparisonTaskType () {
+    setDefaultComparisonTaskType() {
       if (!this.entityPreviewFiles) return ''
       const taskTypeIds = Object.keys(this.entityPreviewFiles)
       if (taskTypeIds && taskTypeIds.length > 0) {
-        const taskTypeOption = this.taskTypeOptions.find((option) => {
-          return this.entityPreviewFiles[option.value].findIndex(
-            p => p.id === this.currentPreview.id
-          ) >= 0
+        const taskTypeOption = this.taskTypeOptions.find(option => {
+          return (
+            this.entityPreviewFiles[option.value].findIndex(
+              p => p.id === this.currentPreview.id
+            ) >= 0
+          )
         })
         if (taskTypeOption) {
           this.taskTypeId = taskTypeOption.value
@@ -1063,7 +1083,7 @@ export default {
       }
     },
 
-    setDefaultComparisonPreview () {
+    setDefaultComparisonPreview() {
       if (!this.entityPreviewFiles) return ''
       let previewFiles = this.entityPreviewFiles[this.taskTypeId]
       if (previewFiles) {
@@ -1078,7 +1098,7 @@ export default {
       }
     },
 
-    resetPreviewFileMap () {
+    resetPreviewFileMap() {
       this.previewFileMap = {}
       if (this.entityPreviewFiles) {
         const previewFiles = this.entityPreviewFiles[this.taskTypeId]
@@ -1090,20 +1110,31 @@ export default {
       }
     },
 
+    onZoomPanClicked() {
+      if (!this.isZoomPan) {
+        this.isDrawing = false
+        this.isAnnotationsDisplayed = false
+        this.isZoomPan = true
+      } else {
+        this.isZoomPan = false
+        this.isAnnotationsDisplayed = true
+      }
+    },
+
     // Annotations
 
-    onDeleteClicked () {
+    onDeleteClicked() {
       this.clearFocus()
       this.deleteSelection()
     },
 
-    onChangeColor (newValue) {
+    onChangeColor(newValue) {
       this.color = newValue
       this.fabricCanvas.freeDrawingBrush.color = this.color
       this.isShowingPalette = false
     },
 
-    onPencilAnnotateClicked () {
+    onPencilAnnotateClicked() {
       this.clearFocus()
       if (this.isDrawing) {
         this.isDrawing = false
@@ -1113,7 +1144,7 @@ export default {
       }
     },
 
-    onTypeClicked () {
+    onTypeClicked() {
       this.clearFocus()
       if (this.isTyping) {
         this.isTyping = false
@@ -1123,7 +1154,7 @@ export default {
       }
     },
 
-    refreshCanvas () {
+    refreshCanvas() {
       this.clearCanvas()
       if (this.annotations.length > 0) {
         if (this.isMovie) {
@@ -1134,22 +1165,27 @@ export default {
       }
     },
 
-    getAnnotation (time) {
+    getAnnotation(time) {
       if (this.isMovie) {
         time = roundToFrame(time, this.fps)
-        return this.annotations.find(
-          (annotation) => annotation.time === time
-        )
+        return this.annotations.find(annotation => annotation.time === time)
       } else if (this.isPicture) {
-        return this.annotations[0]
+        return this.annotations.find(annotation => annotation.time === 0)
       }
     },
 
-    onAnnotationClicked (annotation) {
+    onAnnotationClicked(annotation) {
       this.loadAnnotation(annotation)
     },
 
-    saveAnnotations () {
+    onAnnotationDisplayedClicked() {
+      this.clearFocus()
+      this.isAnnotationsDisplayed = !this.isAnnotationsDisplayed
+      this.isZoomPan = false
+      this.previewViewer.resetZoom()
+    },
+
+    saveAnnotations() {
       let currentTime = 0
       if (this.isMovie) {
         const currentTimeRaw = this.previewViewer.getCurrentTimeRaw()
@@ -1165,16 +1201,16 @@ export default {
       }
     },
 
-    loadAnnotation (annotation) {
+    loadAnnotation(annotation) {
       let currentTime = 0
       if (!annotation) {
-        currentTime = roundToFrame(this.currentTimeRaw, this.fps)
+        if (this.isMovie) {
+          currentTime = roundToFrame(this.currentTimeRaw, this.fps)
+        }
         annotation = this.getAnnotation(currentTime)
         if (!annotation) {
           if (!this.isMovie) {
-            console.warn(
-              'Annotations are malformed or empty.'
-            )
+            console.warn('Annotations are malformed or empty.')
           }
           return
         }
@@ -1188,38 +1224,38 @@ export default {
       this.loadSingleAnnotation(annotation)
     },
 
-    reloadAnnotations () {
+    reloadAnnotations() {
       this.annotations = []
       if (this.currentPreview.annotations) {
         const annotations = []
         if (this.currentPreview.annotations.forEach) {
-          this.currentPreview.annotations.forEach(
-            a => annotations.push({ ...a })
+          this.currentPreview.annotations.forEach(a =>
+            annotations.push({ ...a })
           )
         }
-        this.annotations = annotations.sort((a, b) => {
-          return a.time < b.time
-        }) || []
+        this.annotations =
+          annotations.sort((a, b) => {
+            return a.time < b.time
+          }) || []
       } else {
         this.annotations = []
       }
       return this.annotations
     },
 
-    getFileFromCanvas (canvas, filename) {
+    getFileFromCanvas(canvas, filename) {
       return new Promise((resolve, reject) => {
         canvas.toBlob(blob => {
-          const file = new File(
-            [blob],
-            filename,
-            { type: 'image/png', lastModified: new Date().getTime() }
-          )
+          const file = new File([blob], filename, {
+            type: 'image/png',
+            lastModified: new Date().getTime()
+          })
           return resolve(file)
         })
       })
     },
 
-    extractVideoFrame (canvas, frameNumber) {
+    extractVideoFrame(canvas, frameNumber) {
       return new Promise(resolve => {
         this.setCurrentFrame(frameNumber)
         this.$nextTick(() => {
@@ -1231,7 +1267,7 @@ export default {
       })
     },
 
-    copyAnnotationCanvas (canvas, annotation) {
+    copyAnnotationCanvas(canvas, annotation) {
       return new Promise(resolve => {
         this.clearCanvas()
         this.loadSingleAnnotation(annotation)
@@ -1245,9 +1281,13 @@ export default {
           })
           this.fabricCanvas.getObjects().find(obj => {
             if (obj._objects) {
-              obj._objects.forEach(tmpCanvas.add)
+              obj._objects.forEach(obj => {
+                tmpCanvas.add(obj)
+                obj.strokeWidth = 8 / scaleRatio
+              })
             } else {
               tmpCanvas.add(obj)
+              obj.strokeWidth = 8 / scaleRatio
             }
           })
           tmpCanvas.setZoom(scaleRatio)
@@ -1262,7 +1302,7 @@ export default {
       })
     },
 
-    async extractAnnotationSnapshots () {
+    async extractAnnotationSnapshots() {
       const currentFrame = this.currentFrame
       const annotations = this.annotations.sort((a, b) => b.time < a.time)
       const files = []
@@ -1287,38 +1327,51 @@ export default {
 
     // Events
 
-    onKeyDown (event) {
+    onKeyDown(event) {
       if (!['INPUT', 'TEXTAREA'].includes(event.target.tagName)) {
         if (event.keyCode === 46 || event.keyCode === 8) {
           this.deleteSelection()
-        } else if (event.keyCode === 37) { // arrow left
+        } else if (event.keyCode === 37) {
+          // arrow left
           this.goPreviousFrame()
-        } else if (event.keyCode === 39) { // arrow right
+        } else if (event.keyCode === 39) {
+          // arrow right
           this.goNextFrame()
-        } else if (event.keyCode === 32) { // space
-          this.onPlayPauseClicked()
-          this.pauseEvent(event)
+        } else if (event.keyCode === 32) {
+          // space
+          let styles
+          const playlistModal = document.getElementById('temp-playlist-modal')
+          if (playlistModal) styles = window.getComputedStyle(playlistModal)
+          if (!styles || (styles && styles.display === 'none')) {
+            this.onPlayPauseClicked()
+            this.pauseEvent(event)
+          }
           return false
-        } else if (event.keyCode === 68) { // d
+        } else if (event.keyCode === 68) {
+          // d
           this.container.focus()
           this.pauseEvent(event)
           this.onPencilAnnotateClicked()
-        } else if (event.ctrlKey && event.altKey && event.keyCode === 68) {
-          // ctrl + alt + d
-          this.onPencileAnnotateClicked()
-        } else if (event.ctrlKey && event.keyCode === 90) { // ctrl + z
+        } else if (event.ctrlKey && event.keyCode === 90) {
+          // ctrl + z
           this.undoLastAction()
-        } else if (event.altKey && event.keyCode === 82) { // alt + r
+        } else if (event.altKey && event.keyCode === 82) {
+          // alt + r
           this.redoLastAction()
-        } else if (event.altKey && event.keyCode === 74) { // alt+j
+        } else if (event.altKey && event.keyCode === 74) {
+          // alt+j
           this.onPreviousClicked()
-        } else if (event.altKey && event.keyCode === 75) { // alt+k
+        } else if (event.altKey && event.keyCode === 75) {
+          // alt+k
           this.onNextClicked()
-        } else if (event.ctrlKey && event.keyCode === 67) { // ctrl + c
+        } else if (event.ctrlKey && event.keyCode === 67) {
+          // ctrl + c
           this.copyAnnotations()
-        } else if (event.ctrlKey && event.keyCode === 86) { // ctrl + v
+        } else if (event.ctrlKey && event.keyCode === 86) {
+          // ctrl + v
           this.pasteAnnotations()
-        } else if (event.keyCode === 27) { // Esc
+        } else if (event.keyCode === 27) {
+          // Esc
           if (this.fullScreen) {
             this.onFullScreenChange()
           }
@@ -1326,7 +1379,7 @@ export default {
       }
     },
 
-    onCommentClicked () {
+    onCommentClicked() {
       const height = this.previewContainer.offsetHeight
       this.isCommentsHidden = !this.isCommentsHidden
       this.$nextTick(() => {
@@ -1336,59 +1389,83 @@ export default {
         if (this.$refs['task-info-player']) {
           this.$refs['task-info-player'].focusCommentTextarea()
         }
-        // this.resetHeight()
         this.previewViewer.resetVideo()
         this.previewViewer.resetPicture()
-        this.fixCanvasSize(this.getCurrentPreviewDimensions())
         this.endAnnotationSaving()
         this.$nextTick(() => {
+          this.previewViewer.resize()
+          this.comparisonViewer.resize()
           this.reloadAnnotations()
           this.loadAnnotation()
         })
       })
     },
 
-    configureEvents () {
+    configureEvents() {
       window.addEventListener('keydown', this.onKeyDown, false)
       window.addEventListener('beforeunload', this.onWindowsClosed)
       this.container.addEventListener(
-        'fullscreenchange', this.onFullScreenChange, false)
+        'fullscreenchange',
+        this.onFullScreenChange,
+        false
+      )
       this.container.addEventListener(
-        'mozfullscreenchange', this.onFullScreenChange, false)
+        'mozfullscreenchange',
+        this.onFullScreenChange,
+        false
+      )
       this.container.addEventListener(
-        'MSFullscreenChange', this.onFullScreenChange, false)
+        'MSFullscreenChange',
+        this.onFullScreenChange,
+        false
+      )
       this.container.addEventListener(
-        'webkitfullscreenchange', this.onFullScreenChange, false)
+        'webkitfullscreenchange',
+        this.onFullScreenChange,
+        false
+      )
     },
 
-    removeEvents () {
+    removeEvents() {
       window.removeEventListener('keydown', this.onKeyDown)
       window.removeEventListener('beforeunload', this.onWindowsClosed)
       this.container.removeEventListener(
-        'fullscreenchange', this.onFullScreenChange, false)
+        'fullscreenchange',
+        this.onFullScreenChange,
+        false
+      )
       this.container.removeEventListener(
-        'mozfullscreenchange', this.onFullScreenChange, false)
+        'mozfullscreenchange',
+        this.onFullScreenChange,
+        false
+      )
       this.container.removeEventListener(
-        'MSFullscreenChange', this.onFullScreenChange, false)
+        'MSFullscreenChange',
+        this.onFullScreenChange,
+        false
+      )
       this.container.removeEventListener(
-        'webkitfullscreenchange', this.onFullScreenChange, false)
+        'webkitfullscreenchange',
+        this.onFullScreenChange,
+        false
+      )
     },
 
     // Browsing
 
-    changeCurrentPreview (previewFile) {
+    changeCurrentPreview(previewFile) {
       this.$emit('change-current-preview', previewFile)
     },
 
-    onAddPreviewClicked () {
+    onAddPreviewClicked() {
       this.$emit('add-preview')
     },
 
-    onRemovePreviewClicked () {
+    onRemovePreviewClicked() {
       this.$emit('remove-extra-preview', this.currentPreview)
     },
 
-    onPreviousClicked () {
+    onPreviousClicked() {
       if (this.currentIndex > 1) {
         this.currentIndex--
       } else {
@@ -1396,7 +1473,7 @@ export default {
       }
     },
 
-    onNextClicked () {
+    onNextClicked() {
       if (this.currentIndex < this.previews.length) {
         this.currentIndex++
       } else {
@@ -1404,23 +1481,23 @@ export default {
       }
     },
 
-    displayFirst () {
+    displayFirst() {
       if (this.currentIndex > 1) this.currentIndex = 1
     },
 
-    displayLast () {
+    displayLast() {
       this.currentIndex = this.previews.length
     },
 
     // Loupe
 
-    onCanvasMouseMoved (event) {
+    onCanvasMouseMoved(event) {
       if (this.isPicture && this.$options.loupe) {
         const width = this.canvasWrapper.style.width
         const height = this.canvasWrapper.style.height
         this.previewViewer.updateLoupePosition(event, { width, height })
       } else if (this.isMovie && this.$options.scrubbing) {
-        const x = event.e.clientX
+        const x = this.getClientX(event)
         if (x - this.$options.scrubStartX < 0) {
           this.goPreviousFrame()
         } else {
@@ -1430,7 +1507,7 @@ export default {
       }
     },
 
-    onCanvasClicked (event) {
+    onCanvasClicked(event) {
       if (event.button > 1 && this.isPicture && this.fullScreen) {
         this.$options.loupe = true
         this.previewViewer.showLoupe()
@@ -1439,13 +1516,13 @@ export default {
         this.previewViewer.updateLoupePosition(event, { width, height })
       } else if (event.button > 1 && this.isMovie) {
         this.$options.scrubbing = true
-        this.$options.scrubStartX = event.e.clientX
+        this.$options.scrubStartX = this.getClientX(event)
         this.$options.scrubStartTime = Number(this.currentTimeRaw)
       }
       return false
     },
 
-    onCanvasReleased (event) {
+    onCanvasReleased(event) {
       if (this.isPicture && this.$options.loupe) {
         this.previewViewer.hideLoupe()
         this.$options.loupe = false
@@ -1457,21 +1534,23 @@ export default {
 
     // Video progress
 
-    setCurrentFrame (frameNumber) {
+    setCurrentFrame(frameNumber) {
       if (frameNumber !== this.frameNumber) {
         this.previewViewer.setCurrentFrame(frameNumber)
         this.syncComparisonViewer()
-        setTimeout(this.syncComparisonViewer(), this.frameDuration)
+        setTimeout(() => {
+          this.syncComparisonViewer()
+        }, this.frameDuration)
       }
     },
 
     // Revision previews
 
-    onRevisionPreviewSelected (index) {
+    onRevisionPreviewSelected(index) {
       this.currentIndex = index
     },
 
-    onRevisionPreviewDropped ({ previousIndex, newIndex }) {
+    onRevisionPreviewDropped({ previousIndex, newIndex }) {
       const preview = this.previews[previousIndex]
       this.updateRevisionPreviewPosition({
         previousIndex,
@@ -1479,16 +1558,25 @@ export default {
         revision: this.currentPreview.revision,
         taskId: this.currentPreview.task_id,
         previewId: preview.id
-      })
-        .catch(console.error)
+      }).catch(console.error)
+      this.$emit('previews-order-changed')
       this.$nextTick(() => {
         this.currentIndex = newIndex + 1
       })
+    },
+
+    isValidPreviewModification(previewId, updatedAt) {
+      return (
+        !this.notSaved &&
+        this.currentPreview &&
+        previewId === this.currentPreview.id &&
+        !this.isWriting(updatedAt)
+      )
     }
   },
 
   watch: {
-    currentPreview () {
+    currentPreview() {
       this.endAnnotationSaving()
       this.reloadAnnotations()
       if (this.isMovie) {
@@ -1501,12 +1589,17 @@ export default {
         this.pause()
         this.isDrawing = false
         this.refreshCanvas()
-        setTimeout(this.previewViewer.resetPicture, 10)
+        setTimeout(() => {
+          this.previewViewer.resetPicture()
+        }, 10)
         if (this.comparisonViewer) {
-          setTimeout(this.comparisonViewer.resetPicture, 20)
+          setTimeout(() => {
+            this.comparisonViewer.resetPicture()
+          }, 20)
         }
       } else if (this.isSound || this.isFile || this.is3DModel) {
-        this.fixCanvasSize({ width: 0, height: 0 })
+        // hide canvas
+        this.fixCanvasSize({ width: 0, height: 0, left: 0, top: 0 })
       }
       this.$nextTick(() => {
         if (this.previewViewer && this.previewViewer.isBroken) {
@@ -1516,71 +1609,75 @@ export default {
       this.setDefaultComparisonTaskType()
     },
 
-    'currentPreview.revision' () {
+    'currentPreview.revision'() {
       this.endAnnotationSaving()
-      this.currentIndex = 1
+      this.currentIndex = lastIndex <= this.previews.length ? lastIndex || 1 : 1
     },
 
-    previewToCompareId () {
+    currentIndex() {
+      lastIndex = this.currentIndex
+    },
+
+    previewToCompareId() {
       this.$nextTick(() => {
         const currentFrame = this.currentFrame
         if (this.comparisonViewer) this.comparisonViewer.pause()
         this.previewToCompare = this.previewFileMap[this.previewToCompareId]
         if (this.isComparing) {
           this.setCurrentFrame(currentFrame - 1)
-          setTimeout(this.syncComparisonViewer, 200)
+          setTimeout(() => {
+            this.syncComparisonViewer()
+          }, 200)
           this.pause()
         }
       })
     },
 
-    taskTypeId () {
+    taskTypeId() {
       this.resetPreviewFileMap()
       this.setDefaultComparisonPreview()
     },
 
-    isComparing () {
+    isComparing() {
       this.endAnnotationSaving()
       if (!this.isComparing) {
         if (this.comparisonViewer) this.comparisonViewer.pause()
         this.taskTypeId = ''
         this.previewToCompareId = ''
       }
-      this.$nextTick(() => {
-        this.fixCanvasSize(this.getCurrentPreviewDimensions())
-      })
     },
 
-    light () {
+    light() {
       this.endAnnotationSaving()
       this.previewViewer.resize()
-      this.$nextTick(() => {
-        this.fixCanvasSize(this.getCurrentPreviewDimensions())
-      })
     },
 
-    extraWide () {
+    extraWide() {
       this.endAnnotationSaving()
+      this.previewViewer.resetPicture()
       this.previewViewer.resize()
-      this.$nextTick(() => {
-        this.fixCanvasSize(this.getCurrentPreviewDimensions())
-      })
     },
 
-    isDrawing () {
+    isDrawing() {
       if (this.fabricCanvas) this.fabricCanvas.isDrawingMode = this.isDrawing
       else this.endAnnotationSaving()
+
+      if (this.isDrawing) {
+        this.isAnnotationsDisplayed = true
+      }
     },
 
-    isOrdering () {
+    isOrdering() {
       this.$nextTick(() => {
-        this.fixCanvasSize(this.getCurrentPreviewDimensions())
         this.previewViewer.resetVideo()
         this.previewViewer.resetPicture()
       })
     },
 
-    isTyping () {
+    isTyping() {
+      if (this.isTyping) {
+        this.isAnnotationsDisplayed = true
+      }
       const clickarea =
         this.canvasWrapper.getElementsByClassName('upper-canvas')[0]
       if (this.isTyping && clickarea) {
@@ -1590,33 +1687,14 @@ export default {
       }
     },
 
-    isCommentsHidden () {
-      this.$nextTick(() => {
-        this.fixCanvasSize(this.getCurrentPreviewDimensions())
-      })
-    }
-  },
-
-  socket: {
-    events: {
-      'preview-file:annotation-update' (eventData) {
-        if (
-          !this.notSaved &&
-          this.currentPreview &&
-          eventData.preview_file_id === this.currentPreview.id &&
-          !this.isWriting(eventData.updated_at)
-        ) {
-          this.refreshPreview({
-            previewId: this.currentPreview.id,
-            taskId: this.currentPreview.task_id
-          }).then(preview => {
-            if (!this.notSaved) {
-              this.reloadAnnotations()
-              if (this.isPicture) this.loadAnnotation(this.getAnnotation(0))
-              else this.loadAnnotation()
-            }
-          })
-        }
+    isAnnotationsDisplayed() {
+      if (this.isAnnotationsDisplayed) {
+        this.$nextTick(() => {
+          this.previewViewer.resetZoom()
+        })
+      }
+      if (!this.isAnnotationsDisplayed) {
+        this.isDrawing = false
       }
     }
   }
@@ -1658,7 +1736,7 @@ export default {
 .preview-viewer {
   width: 100%;
   text-align: center;
-  background: #36393F;
+  background: #36393f;
 }
 
 .buttons {
@@ -1678,7 +1756,7 @@ export default {
 .buttons .button {
   background: $dark-grey-2;
   border-radius: 0;
-  color: #BBB;
+  color: #bbb;
   border: 0;
   margin: 0;
   transition: all 0.3s ease;
@@ -1686,7 +1764,7 @@ export default {
 
 .buttons .button.active,
 .buttons .button:hover {
-  color: #43B581;
+  color: #43b581;
 }
 
 .buttons .button:hover {
@@ -1730,14 +1808,15 @@ export default {
 }
 
 .slide-enter-active {
-  transition: all .3s ease;
+  transition: all 0.3s ease;
 }
 
 .slide-leave-active {
-  transition: all .3s ease;
+  transition: all 0.3s ease;
 }
 
-.slide-enter, .slide-leave-to {
+.slide-enter,
+.slide-leave-to {
   transform: translateX(100%);
 }
 
@@ -1834,5 +1913,9 @@ export default {
 #resize-annotation-canvas,
 #annotation-snapshot {
   display: none;
+}
+
+.preview-viewer {
+  overflow: hidden;
 }
 </style>

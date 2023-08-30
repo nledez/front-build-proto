@@ -36,12 +36,14 @@ $dark-purple: #5E60BA;
 $dark-purple-strong: #4A4A6F;
 $blue-light: #92A9FA;
 $blue: #7289DA;
+$yellow: #FFC107;
 
 
 :root {
   --background: #FFFFFF;
   --background-rgb: 255, 255, 255;
   --background-alt: #F6F6F6;
+  --background-alt-2: #FFF;
   --background-alt-rgb: 246, 246, 246;
   --background-block: #FFFFFF;
   --background-page: #F6F6F6;
@@ -52,19 +54,23 @@ $blue: #7289DA;
   --background-selectable: #E1E4FF;
   --background-selectable-selectable: #CFD1FF;
   --background-selected: #CFD1FF;
+  --background-disabled: #DDD;
   --border: #DBDBDB;
   --border-rgb: 219, 219, 219;
   --border-alt: #DBDBDB;
   --box-shadow: #DDD;
   --text: #7A7A7A;
+  --text-alt: #888;
   --text-strong: $black;
   --poster-color: #000;
+  --purple: #CFD1FF; 
 }
 
 .dark {
   --background: #36393F;
   --background-rgb: 54, 57, 63;
   --background-alt: #46494F;
+  --background-alt-2: #46494F;
   --background-alt-rgb: 70, 73, 79;
   --background-block: #46494F;
   --background-hover: #5E6169;
@@ -75,10 +81,13 @@ $blue: #7289DA;
   --background-selectable: #7E80CA;
   --background-selectable-selectable: #878B97;
   --background-selected: #5E60BA;
+  --background-disabled: #25282E;
   --border: #25282E;
   --border-rgb: 37, 40, 46;
   --border-alt: #666666;
   --box-shadow: #2226;
   --text: #EEEEEE;
+  --text-alt: #EEEEEE;
   --text-strong: #FEFEFE;
+  --purple: #5E60BA; 
 }

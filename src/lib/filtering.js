@@ -7,9 +7,17 @@ import {
 import string from '@/lib/string'
 
 const UNION_REGEX = /\+\(.*\)/
-const EQUAL_REGEX = /\[([^[]*)\]=\[([^[]*)\]|([^ ]*)=\[([^[]*)\]|([^ ]*)=([^ ]*)|\[([^[]*)\]=([^ ]*)/g
+const EQUAL_REGEX =
+  /\[([^[]*)\]=\[([^[]*)\]|([^ ]*)=\[([^[]*)\]|([^ ]*)=([^ ]*)|\[([^[]*)\]=([^ ]*)/g
 const EQUAL_ASSET_TYPE_REGEX = /type=\[([^[]*)\]|type=([^ ]*)|type=([^ ]*)/g
-const EQUAL_PEOPLE_DEPARTMENT_REGEX = /department=\[([^[]*)\]|department=([^ ]*)|department=([^ ]*)/g
+const EQUAL_PEOPLE_DEPARTMENT_REGEX =
+  /department=\[([^[]*)\]|department=([^ ]*)|department=([^ ]*)/g
+const EQUAL_READY_FOR_REGEX =
+  /readyfor=\[([^[]*)\]|readyfor=([^ ]*)|readyfor=([^ ]*)/g
+const EQUAL_PRIORITY_REGEX = /priority-\[([^[]*)\]=\d|priority-([^ ]*)=\d/g
+const EQUAL_ASSETS_READY_REGEX =
+  /assetsready=\[([^[]*)\]|assetsready=([^ ]*)|assetsready=([^ ]*)/g
+const MULTIPLE_REGEX = /\[([^[]*)\]/g
 
 /*
  * Look in the search query for task type filter like anim=wip.
@@ -17,9 +25,9 @@ const EQUAL_PEOPLE_DEPARTMENT_REGEX = /department=\[([^[]*)\]|department=([^ ]*)
  */
 export const applyFilters = (entries, filters, taskMap) => {
   if (filters && filters.length > 0) {
-    const result = entries.filter((entry) => {
+    const result = entries.filter(entry => {
       let isOk = null
-      filters.forEach((filter) => {
+      filters.forEach(filter => {
         if (isOk === false && !filters.union) return false
         if (isOk === true && filters.union) return true
         isOk = applyFiltersFunctions[filter.type](entry, filter, taskMap)
@@ -33,24 +41,23 @@ export const applyFilters = (entries, filters, taskMap) => {
 }
 
 const applyFiltersFunctions = {
-  assettype (entry, filter, taskMap) {
+  assettype(entry, filter, taskMap) {
     let isOk = true
     isOk = filter.assetType && entry.asset_type_id === filter.assetType.id
     if (filter.excluding) isOk = !isOk
     return isOk
   },
 
-  assignation (entry, filter, taskMap) {
+  assignation(entry, filter, taskMap) {
     const task = taskMap.get(entry.validations.get(filter.taskType.id))
     if (filter.assigned) {
       return task && task.assignees && task.assignees.length > 0
     } else {
-      return !task ||
-        (task && task.assignees && task.assignees.length === 0)
+      return !task || (task && task.assignees && task.assignees.length === 0)
     }
   },
 
-  assignedto (entry, filter, taskMap) {
+  assignedto(entry, filter, taskMap) {
     let isOk = false
     if (entry.tasks) {
       entry.tasks.forEach(taskId => {
@@ -62,7 +69,7 @@ const applyFiltersFunctions = {
     return isOk
   },
 
-  descriptor (entry, filter, taskMap) {
+  descriptor(entry, filter, taskMap) {
     let isOk = false
     if (
       entry.data &&
@@ -71,9 +78,30 @@ const applyFiltersFunctions = {
     ) {
       let dataValue = entry.data[filter.descriptor.field_name]
       dataValue = dataValue.toLowerCase()
-      filter.values.forEach(value => {
-        isOk = isOk || dataValue.indexOf(value.toLowerCase()) >= 0
-      })
+      if (
+        filter.values.length === 1 &&
+        filter.values[0].match(new RegExp('(:true)|(:false)$'))
+      ) {
+        const isTrue = Boolean(filter.values[0].match(new RegExp(':true$')))
+        let value = filter.values[0].replace(
+          new RegExp('(:true)|(:false)$'),
+          ''
+        )
+        value = value.toLowerCase()
+        try {
+          dataValue = JSON.parse(dataValue)
+          isOk =
+            isOk ||
+            (dataValue[value] === undefined && !isTrue) ||
+            dataValue[value] === isTrue
+        } catch {
+          isOk = false
+        }
+      } else {
+        filter.values.forEach(value => {
+          isOk = isOk || dataValue.indexOf(value.toLowerCase()) >= 0
+        })
+      }
     } else {
       isOk = false
     }
@@ -81,11 +109,15 @@ const applyFiltersFunctions = {
     return isOk
   },
 
-  exclusion (entry, filter, taskMap) {
+  exclusion(entry, filter, taskMap) {
     return !filter.excludedIds[entry.id]
   },
 
-  status (entry, filter, taskMap) {
+  taskunion(entry, filter, taskMap) {
+    return filter.unionIds.get(entry.id)
+  },
+
+  status(entry, filter, taskMap) {
     const task = taskMap.get(entry.validations.get(filter.taskType.id))
     let isOk = true
     isOk = task && filter.taskStatuses.includes(task.task_status_id)
@@ -93,7 +125,7 @@ const applyFiltersFunctions = {
     return isOk
   },
 
-  thumbnail (entry, filter, taskMap) {
+  thumbnail(entry, filter, taskMap) {
     const hasAvatar =
       entry.preview_file_id !== '' &&
       entry.preview_file_id !== undefined &&
@@ -101,14 +133,39 @@ const applyFiltersFunctions = {
     return filter.excluding ? !hasAvatar : hasAvatar
   },
 
-  department (entry, filter, taskMap) {
+  department(entry, filter, taskMap) {
     if (!entry.departments) return false
     let hasDepartment = false
     filter.values.forEach(value => {
-      hasDepartment = hasDepartment ||
-                      entry.departments.indexOf(value.id) !== -1
+      hasDepartment =
+        hasDepartment || entry.departments.indexOf(value.id) !== -1
     })
     return filter.excluding ? !hasDepartment : hasDepartment
+  },
+
+  priority(entry, filter, taskMap) {
+    const task = taskMap.get(entry.validations.get(filter.taskTypeId))
+    return task && task.priority === filter.value
+  },
+
+  readyfor(entry, filter, taskMap) {
+    return entry.ready_for === filter.value
+  },
+
+  assetsready(entry, filter, taskMap) {
+    let isOk = false
+    if (entry.tasks) {
+      entry.tasks.forEach(taskId => {
+        const task = taskMap.get(taskId)
+        if (task.task_type_id === filter.value) {
+          isOk =
+            entry.nb_entities_out > 0 &&
+            entry.nb_entities_out === task.nb_assets_ready
+        }
+      })
+    }
+    if (filter.excluding) isOk = !isOk
+    return isOk
   }
 }
 
@@ -116,17 +173,40 @@ const applyFiltersFunctions = {
  * Extract keywords from a given text. Remove equality and exclusion
  * expressions.
  */
-export const getKeyWords = (queryText) => {
+export const getKeyWords = queryText => {
   if (!queryText) {
     return []
   } else {
     return queryText
       .replace(UNION_REGEX, '')
       .replace(EQUAL_REGEX, '')
+      .replace(MULTIPLE_REGEX, '')
       .split(' ')
-      .filter((query) => {
+      .filter(query => {
         return query.length > 0 && query[0] !== '-' && query !== 'withthumbnail'
       })
+  }
+}
+
+/**
+ * Extract multiple keywords from a given text. Remove equality and exclusion
+ * expressions.
+ */
+export const getMultipleKeyWords = queryText => {
+  if (!queryText) {
+    return []
+  } else {
+    const rgxMatches = queryText.match(MULTIPLE_REGEX)
+    if (rgxMatches) {
+      let keywords = []
+      rgxMatches.forEach(rgxMatch => {
+        rgxMatch = cleanParenthesis(rgxMatch)
+        keywords = keywords.concat(rgxMatch.split(','))
+      })
+      return keywords
+    } else {
+      return []
+    }
   }
 }
 
@@ -134,12 +214,12 @@ export const getKeyWords = (queryText) => {
  * Extract excluding keywords from a given text. Remove equality expresions
  * and tradition keywords.
  */
-export const getExcludingKeyWords = (queryText) => {
+export const getExcludingKeyWords = queryText => {
   return queryText
     .replace(UNION_REGEX, '')
     .replace(EQUAL_REGEX, '')
     .split(' ')
-    .filter((keyword) => {
+    .filter(keyword => {
       return (
         keyword.length > 0 && keyword[0] === '-' && keyword !== '-withthumbnail'
       )
@@ -154,27 +234,28 @@ export const getExcludingKeyWords = (queryText) => {
  * * assignation filters
  * * exclusion filters
  */
-export const getFilters = (
-  {
-    entryIndex,
-    assetTypes = [],
-    taskTypes = [],
-    taskStatuses = [],
-    descriptors = [],
-    departments = [],
-    persons,
-    query
-  }
-) => {
+export const getFilters = ({
+  entryIndex,
+  assetTypes = [],
+  taskTypes = [],
+  taskStatuses = [],
+  descriptors = [],
+  departments = [],
+  persons,
+  query
+}) => {
   const unionExtraction = getUnion(query)
   query = unionExtraction.query
   const filters = [
     ...getAssetTypeFilters(assetTypes, query),
     ...getTaskTypeFilters(taskTypes, taskStatuses, query),
-    ...getDescFilters(descriptors, query),
+    ...getDescFilters(descriptors, taskTypes, query),
     ...getAssignedToFilters(persons, query),
     ...getDepartmentFilters(departments, query),
-    ...getThumbnailFilters(query) || [],
+    ...(getThumbnailFilters(query) || []),
+    ...getPriorityFilter(taskTypes, query),
+    ...getReadyForFilter(taskTypes, query),
+    ...getAssetsReadyFilter(taskTypes, query),
     ...getExcludingFilters(entryIndex, query)
   ]
   filters.union = unionExtraction.union
@@ -219,11 +300,12 @@ const getExcludingFilters = (entryIndex, query) => {
  */
 export const getTaskFilters = (entryIndex, query) => {
   const filters = []
+  const multipleKeywords = getMultipleKeyWords(query) || []
   const excludingKeywords = getExcludingKeyWords(query) || []
   excludingKeywords.forEach(keyword => {
     const excludedMap = {}
     const excludedEntries = indexSearch(entryIndex, [keyword]) || []
-    excludedEntries.forEach((entry) => {
+    excludedEntries.forEach(entry => {
       excludedMap[entry.id] = true
     })
     filters.push({
@@ -231,10 +313,23 @@ export const getTaskFilters = (entryIndex, query) => {
       excludedIds: excludedMap
     })
   })
+  const unionMap = new Map()
+  multipleKeywords.forEach(keyword => {
+    const unionEntries = indexSearch(entryIndex, [keyword]) || []
+    unionEntries.forEach(entry => {
+      unionMap.set(entry.id, true)
+    })
+  })
+  if (unionMap.size > 0) {
+    filters.push({
+      type: 'taskunion',
+      unionIds: unionMap
+    })
+  }
   return filters
 }
 
-const cleanParenthesis = (value) => {
+const cleanParenthesis = value => {
   if (value[0] === '[') {
     return value.substring(1, value.length - 1)
   } else {
@@ -245,10 +340,7 @@ const cleanParenthesis = (value) => {
 /*
  * Extract asset type filters (like type=characters from given query.
  */
-export const getAssetTypeFilters = (
-  assetTypes,
-  queryText
-) => {
+export const getAssetTypeFilters = (assetTypes, queryText) => {
   if (!queryText) return []
 
   const results = []
@@ -274,11 +366,7 @@ export const getAssetTypeFilters = (
  * Extract task type filters (like anim=wip or [mode facial]=wip) from given
  * query.
  */
-export const getTaskTypeFilters = (
-  taskTypes,
-  taskStatuses,
-  queryText
-) => {
+export const getTaskTypeFilters = (taskTypes, taskStatuses, queryText) => {
   if (!queryText) return []
 
   const results = []
@@ -308,7 +396,8 @@ export const getTaskTypeFilters = (
             type: 'assignation'
           })
         } else if (value) {
-          const values = value.split(',')
+          const values = value
+            .split(',')
             .map(shortName => shortName.toLowerCase())
             .filter(shortName => taskStatusShortNameIndex[shortName])
             .map(shortName => taskStatusShortNameIndex[shortName].id)
@@ -331,7 +420,7 @@ export const getTaskTypeFilters = (
  * Extract metadata filters (like size=big or size=small) from given
  * query.
  */
-export const getDescFilters = (descriptors, queryText) => {
+export const getDescFilters = (descriptors, taskTypes, queryText) => {
   if (!queryText) return []
 
   const results = []
@@ -342,7 +431,16 @@ export const getDescFilters = (descriptors, queryText) => {
     rgxMatches.forEach(rgxMatch => {
       const pattern = rgxMatch.split('=')
       const descriptorName = cleanParenthesis(pattern[0])
-      if (descriptorName === 'type' || descriptorName === 'department') return
+      if (
+        descriptorName === 'type' ||
+        descriptorName === 'department' ||
+        taskTypes.find(
+          t => t.name.toLowerCase() === descriptorName.toLowerCase()
+        )
+      ) {
+        return
+      }
+
       const matchedDescriptors =
         descriptorNameIndex[descriptorName.toLowerCase()]
       let value = cleanParenthesis(pattern[1])
@@ -414,11 +512,10 @@ export const getAssignedToFilters = (persons, queryText) => {
   if (rgxMatches) {
     rgxMatches.forEach(rgxMatch => {
       const personIndex = new Map()
-      persons
-        .forEach(person => {
-          const name = string.slugify(person.name.toLowerCase())
-          personIndex.set(name, person)
-        })
+      persons.forEach(person => {
+        const name = string.slugify(person.name.toLowerCase())
+        personIndex.set(name, person)
+      })
       const pattern = rgxMatch.split('=')
       if (pattern[0] === 'assignedto') {
         let value = pattern[1]
@@ -441,7 +538,7 @@ export const getAssignedToFilters = (persons, queryText) => {
   return results
 }
 
-export const getThumbnailFilters = (queryText) => {
+export const getThumbnailFilters = queryText => {
   const results = []
   if (queryText.indexOf('-withthumbnail') > -1) {
     results.push({
@@ -452,6 +549,81 @@ export const getThumbnailFilters = (queryText) => {
     results.push({
       type: 'thumbnail',
       excluding: false
+    })
+  }
+  return results
+}
+
+export const getPriorityFilter = (taskTypes, queryText) => {
+  if (!queryText) return []
+
+  const results = []
+  const rgxMatches = queryText.match(EQUAL_PRIORITY_REGEX)
+
+  if (rgxMatches) {
+    const taskTypeNameIndex = buildTaskTypeIndex(taskTypes)
+    rgxMatches.forEach(rgxMatch => {
+      const pattern = rgxMatch.split('=')
+      const taskTypeName = cleanParenthesis(pattern[0].substring(9))
+      const value = cleanParenthesis(pattern[1])
+      const taskTypes = taskTypeNameIndex[taskTypeName.toLowerCase()]
+      if (taskTypes && taskTypes.length > 0) {
+        results.push({
+          taskTypeId: taskTypes[0].id,
+          value: parseInt(value),
+          type: 'priority'
+        })
+      }
+    })
+  }
+  return results
+}
+
+export const getReadyForFilter = (taskTypes, queryText) => {
+  if (!queryText) return []
+
+  const results = []
+  const rgxMatches = queryText.match(EQUAL_READY_FOR_REGEX)
+
+  if (rgxMatches) {
+    const taskTypeNameIndex = buildTaskTypeIndex(taskTypes)
+    rgxMatches.forEach(rgxMatch => {
+      const pattern = rgxMatch.split('=')
+      const taskTypeName = cleanParenthesis(pattern[1])
+      const taskTypes = taskTypeNameIndex[taskTypeName.toLowerCase()]
+      if (taskTypes && taskTypes.length > 0) {
+        results.push({
+          value: taskTypes[0].id,
+          type: 'readyfor'
+        })
+      }
+    })
+  }
+  return results
+}
+
+export const getAssetsReadyFilter = (taskTypes, queryText) => {
+  if (!queryText) return []
+
+  const results = []
+  const rgxMatches = queryText.match(EQUAL_ASSETS_READY_REGEX)
+
+  if (rgxMatches) {
+    const taskTypeNameIndex = buildTaskTypeIndex(taskTypes)
+
+    rgxMatches.forEach(rgxMatch => {
+      const pattern = rgxMatch.split('=')
+      let taskTypeName = cleanParenthesis(pattern[1])
+      const excluding = taskTypeName.startsWith('-')
+      if (excluding) taskTypeName = taskTypeName.substring(1)
+      const taskTypes = taskTypeNameIndex[taskTypeName.toLowerCase()]
+      if (taskTypes && taskTypes.length > 0) {
+        results.push({
+          value: taskTypes[0].id,
+          type: 'assetsready',
+          excluding
+        })
+      }
     })
   }
   return results

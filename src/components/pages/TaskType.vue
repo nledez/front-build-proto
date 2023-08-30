@@ -1,230 +1,251 @@
 <template>
-<div class="task-type columns fixed-page">
-  <div class="column main-column">
-    <div class="task-type page" ref="page">
-      <div class="task-type-header page-header flexrow-item" ref="header">
-        <div class="flexcolumn-item flexrow">
-          <router-link
-            class="back-link flexrow-item"
-            :to="backPath"
-          >
-            <corner-left-up-icon size="1.4x" />
-          </router-link>
-          <div class="flexrow-item"></div>
-          <task-type-name
-            class="flexrow-item"
-            style="font-size: 1.2em"
-            :task-type="currentTaskType"
-          />
-          <div class="filler"></div>
-          <div class="flexrow-item">
-            <button-simple
-              icon="upload"
-              :title="$t('main.csv.import_file')"
-              @click="showImportModal"
-              v-if="!isActiveTab('schedule') && !isActiveTab('estimation')"
+  <div class="task-type columns fixed-page">
+    <div class="column main-column">
+      <div class="task-type page" ref="page">
+        <div class="task-type-header page-header flexrow-item" ref="header">
+          <div class="flexcolumn-item flexrow">
+            <router-link class="back-link flexrow-item" :to="backPath">
+              <corner-left-up-icon size="1.4x" />
+            </router-link>
+            <div class="flexrow-item"></div>
+            <task-type-name
+              class="flexrow-item"
+              style="font-size: 1.2em"
+              :task-type="currentTaskType"
             />
+            <div class="filler"></div>
+            <button-simple
+              class="flexrow-item"
+              icon="grid"
+              :is-on="contactSheetMode"
+              :title="$t('tasks.show_contact_sheet')"
+              @click="contactSheetMode = !contactSheetMode"
+              v-if="isActiveTab('tasks')"
+            />
+            <div class="flexrow-item">
+              <button-simple
+                icon="upload"
+                :title="$t('main.csv.import_file')"
+                @click="showImportModal"
+                v-if="!isActiveTab('schedule') && !isActiveTab('estimation')"
+              />
+            </div>
+            <div class="flexrow-item">
+              <button-simple
+                icon="download"
+                :title="$t('main.csv.export_file')"
+                @click="onExportClick"
+                v-if="!isActiveTab('schedule') && !isActiveTab('estimation')"
+              />
+            </div>
           </div>
-          <div class="flexrow-item">
-            <button-simple
-              icon="download"
-              :title="$t('main.csv.export_file')"
-              @click="onExportClick"
-              v-if="!isActiveTab('schedule') && !isActiveTab('estimation')"
-            />
+
+          <div class="tabs mt1">
+            <ul>
+              <li :class="{ 'is-active': isActiveTab('tasks') }">
+                <router-link :to="tasksPath">
+                  {{ $t('tasks.tasks') }}
+                </router-link>
+              </li>
+              <li :class="{ 'is-active': isActiveTab('schedule') }">
+                <router-link :to="schedulePath">
+                  {{ $t('schedule.title') }}
+                </router-link>
+              </li>
+              <li :class="{ 'is-active': isActiveTab('estimation') }">
+                <router-link :to="estimationPath">
+                  {{ $t('estimation.title') }}
+                </router-link>
+              </li>
+            </ul>
+          </div>
+
+          <div class="flexcolumn-item flexrow">
+            <div class="flexrow-item">
+              <search-field
+                ref="task-search-field"
+                :can-save="true"
+                :focus-options="{ preventScroll: true }"
+                @change="onSearchChange"
+                @enter="saveSearchQuery"
+                @save="saveSearchQuery"
+                placeholder="ex: retake chara"
+              />
+            </div>
+            <div class="flexrow-item" v-if="isActiveTab('tasks')">
+              <combobox-styled
+                :label="$t('tasks.due_date')"
+                :options="dueDateOptions"
+                locale-key-prefix="tasks."
+                v-model="dueDateFilter"
+              />
+            </div>
+            <div class="flexrow-item" v-if="isActiveTab('tasks')">
+              <combobox-styled
+                :label="$t('tasks.late')"
+                :options="estimationOptions"
+                locale-key-prefix="tasks."
+                v-model="estimationFilter"
+              />
+            </div>
+            <div class="flexrow-item" v-if="isActiveTab('tasks')">
+              <combobox-styled
+                :label="$t('task_types.fields.priority')"
+                :options="priorityOptions"
+                locale-key-prefix="tasks."
+                v-model="priorityFilter"
+              />
+            </div>
+            <div class="filler"></div>
+            <div class="flexrow-item" v-if="isActiveTab('tasks')">
+              <combobox-styled
+                :label="$t('main.sorted_by')"
+                :options="sortOptions"
+                locale-key-prefix="tasks.fields."
+                v-model="currentSort"
+              />
+            </div>
+
+            <div
+              class="flexrow-item"
+              v-if="isActiveTab('schedule') && isCurrentUserManager"
+            >
+              <date-field
+                class="flexrow-item"
+                :disabled-dates="startDisabledDates"
+                :with-margin="false"
+                :label="$t('main.start_date')"
+                :can-delete="false"
+                v-model="schedule.taskTypeStartDate"
+              />
+            </div>
+            <div
+              class="flexrow-item"
+              v-if="isActiveTab('schedule') && isCurrentUserManager"
+            >
+              <date-field
+                class="flexrow-item"
+                :disabled-dates="endDisabledDates"
+                :with-margin="false"
+                :label="$t('main.end_date')"
+                :can-delete="false"
+                v-model="schedule.taskTypeEndDate"
+              />
+            </div>
+
+            <div
+              class="flexrow-item color-option"
+              v-if="isActiveTab('schedule')"
+            >
+              <combobox-styled
+                class="flexrow-item"
+                :label="$t('tasks.colors.title')"
+                :options="schedule.colorOptions"
+                locale-key-prefix="tasks.colors."
+                no-field
+                v-model="schedule.currentColor"
+              />
+            </div>
+            <div class="flexrow-item zoom-level" v-if="isActiveTab('schedule')">
+              <combobox-number
+                :label="$t('schedule.zoom_level')"
+                :options="schedule.zoomOptions"
+                no-field
+                v-model="schedule.zoomLevel"
+                v-if="isActiveTab('schedule')"
+              />
+            </div>
           </div>
         </div>
+        <div class="query-list">
+          <search-query-list
+            :queries="searchQueries"
+            @change-search="changeSearch"
+            @remove-search="removeSearchQuery"
+            v-if="!loading.entities"
+          />
+        </div>
 
-        <div class="tabs mt1">
-          <ul>
-            <li :class="{'is-active': isActiveTab('tasks')}">
-              <router-link :to="tasksPath">
-                {{ $t('tasks.tasks')}}
-              </router-link>
-            </li>
-            <li :class="{'is-active': isActiveTab('schedule')}">
-              <router-link :to="schedulePath">
-                {{ $t('schedule.title')}}
-              </router-link>
-            </li>
-            <li :class="{'is-active': isActiveTab('estimation')}">
-              <router-link :to="estimationPath">
-                {{ $t('estimation.title')}}
-              </router-link>
-            </li>
-          </ul>
+        <task-list
+          ref="task-list"
+          :disabled-dates="disabledDates"
+          :entity-type="entityType"
+          :is-contact-sheet="contactSheetMode"
+          :is-error="errors.entities"
+          :is-grouped="this.currentSort === 'entity_name'"
+          :is-loading="loading.entities"
+          :tasks="tasks"
+          @task-selected="onTaskSelected"
+          v-if="isActiveTab('tasks')"
+        />
+
+        <div
+          class="task-type-schedule flexrow-item"
+          v-if="isActiveTab('schedule')"
+        >
+          <schedule
+            ref="schedule-widget"
+            :start-date="productionStartDate"
+            :end-date="productionEndDate"
+            :sub-start-date="taskTypeStartDate"
+            :sub-end-date="taskTypeEndDate"
+            :hierarchy="schedule.scheduleItems"
+            :zoom-level="schedule.zoomLevel"
+            :height="schedule.scheduleHeight"
+            :is-loading="loading.entities"
+            :is-estimation-linked="true"
+            @item-changed="saveTaskScheduleItem"
+            @root-element-expanded="expandPersonElement"
+            @estimation-changed="updateEstimation"
+          />
         </div>
 
         <div
-          class="flexcolumn-item flexrow"
+          class="task-type-estimation flexrow-item"
+          v-if="isActiveTab('estimation')"
         >
-          <div
-            class="flexrow-item"
-          >
-            <search-field
-              ref="task-search-field"
-              :can-save="true"
-              @change="onSearchChange"
-              @enter="saveSearchQuery"
-              @save="saveSearchQuery"
-              placeholder="ex: retake chara"
-            />
-          </div>
-          <div class="filler"></div>
-          <div
-            class="flexrow-item"
-            v-if="isActiveTab('tasks')"
-          >
-            <combobox
-              :label="$t('main.sorted_by')"
-              :options="sortOptions"
-              locale-key-prefix="tasks.fields."
-              v-model="currentSort"
-            />
-          </div>
-
-          <div
-            class="flexrow-item field"
-            v-if="isActiveTab('schedule') && isCurrentUserManager"
-          >
-            <date-field
-              class="flexrow-item"
-              :disabled-dates="startDisabledDates"
-              :with-margin="false"
-              :label="$t('main.start_date')"
-              :can-delete="false"
-              v-model="schedule.selectedStartDate"
-            />
-          </div>
-          <div
-            class="flexrow-item field"
-            v-if="isActiveTab('schedule') && isCurrentUserManager"
-          >
-            <date-field
-              class="flexrow-item"
-              :disabled-dates="endDisabledDates"
-              :with-margin="false"
-              :label="$t('main.end_date')"
-              :can-delete="false"
-              v-model="schedule.selectedEndDate"
-            />
-          </div>
-
-          <div
-            class="flexrow-item color-option"
-            v-if="isActiveTab('schedule')"
-          >
-            <combobox
-              class="flexrow-item"
-              :label="$t('tasks.colors.title')"
-              :options="schedule.colorOptions"
-              locale-key-prefix="tasks.colors."
-              v-model="schedule.currentColor"
-            />
-          </div>
-          <div
-            class="flexrow-item zoom-level"
-            v-if="isActiveTab('schedule')"
-          >
-            <combobox-number
-              :label="$t('schedule.zoom_level')"
-              :options="schedule.zoomOptions"
-              v-model="schedule.zoomLevel"
-              v-if="isActiveTab('schedule')"
-            />
-          </div>
+          <estimation-helper
+            ref="estimation-widget"
+            :entity-type="entityType"
+            :tasks="tasks"
+            @estimation-changed="updateEstimation"
+          />
         </div>
-      </div>
-      <div class="query-list">
-        <search-query-list
-          :queries="searchQueries"
-          @change-search="changeSearch"
-          @remove-search="removeSearchQuery"
-          v-if="!loading.entities"
+
+        <import-render-modal
+          :active="modals.isImportRenderDisplayed"
+          :is-loading="loading.importing"
+          :is-error="errors.importing"
+          :import-error="errors.importingError"
+          :parsed-csv="parsedCSV"
+          :form-data="importCsvFormData"
+          :columns="[...dataMatchers, ...optionalColumns]"
+          :dataMatchers="dataMatchers"
+          :database="{}"
+          :disable-update="true"
+          @reupload="resetImport"
+          @cancel="hideImportRenderModal"
+          @confirm="uploadImportFile"
+        />
+
+        <import-modal
+          ref="import-modal"
+          :active="modals.importing"
+          :is-loading="loading.importing"
+          :is-error="errors.importing"
+          :form-data="importCsvFormData"
+          :columns="dataMatchers"
+          :optional-columns="optionalColumns"
+          @cancel="hideImportModal"
+          @confirm="renderImport"
         />
       </div>
+    </div>
 
-      <task-list
-        ref="task-list"
-        :tasks="tasks"
-        :entity-type="entityType"
-        :is-loading="loading.entities"
-        :is-error="errors.entities"
-        @task-selected="onTaskSelected"
-        v-if="isActiveTab('tasks')"
-      />
-
-      <div
-        class="task-type-schedule flexrow-item"
-        v-if="isActiveTab('schedule')"
-      >
-        <schedule
-          ref="schedule-widget"
-          :start-date="schedule.startDate"
-          :end-date="schedule.endDate"
-          :hierarchy="schedule.scheduleItems"
-          :zoom-level=schedule.zoomLevel
-          :height="schedule.scheduleHeight"
-          :is-loading="loading.entities"
-          :is-estimation-linked="true"
-          @item-changed="saveTaskScheduleItem"
-          @root-element-expanded="expandPersonElement"
-          @estimation-changed="updateEstimation"
-        />
-      </div>
-
-      <div
-        class="task-type-estimation flexrow-item"
-        v-if="isActiveTab('estimation')"
-      >
-        <estimation-helper
-          ref="estimation-widget"
-          :entity-type="entityType"
-          :tasks="tasks"
-          @estimation-changed="updateEstimation"
-        />
-      </div>
-
-      <import-render-modal
-        :active="modals.isImportRenderDisplayed"
-        :is-loading="loading.importing"
-        :is-error="errors.importing"
-        :import-error="errors.importingError"
-        :parsed-csv="parsedCSV"
-        :form-data="importCsvFormData"
-        :columns="[...dataMatchers, ...optionalColumns]"
-        :dataMatchers="dataMatchers"
-        :database="{}"
-        :disable-update=true
-        @reupload="resetImport"
-        @cancel="hideImportRenderModal"
-        @confirm="uploadImportFile"
-      />
-
-      <import-modal
-        ref="import-modal"
-        :active="modals.importing"
-        :is-loading="loading.importing"
-        :is-error="errors.importing"
-        :form-data="importCsvFormData"
-        :columns="dataMatchers"
-        :optional-columns="optionalColumns"
-        @cancel="hideImportModal"
-        @confirm="renderImport"
-      />
-
+    <div class="column side-column" v-if="nbSelectedTasks >= 1">
+      <task-info :task="selectedTasks.values().next().value" with-actions />
     </div>
   </div>
-
-  <div
-    class="column side-column"
-    v-if="nbSelectedTasks === 1"
-  >
-    <task-info
-      :task="selectedTasks.values().next().value"
-    />
-  </div>
-</div>
 </template>
 
 <script>
@@ -257,19 +278,120 @@ import {
 import { formatListMixin } from '@/components/mixins/format'
 
 import { CornerLeftUpIcon } from 'vue-feather-icons'
+
 import ButtonSimple from '@/components/widgets/ButtonSimple'
 import DateField from '@/components/widgets/DateField'
-import Combobox from '@/components/widgets/Combobox'
+import ComboboxStyled from '@/components/widgets/ComboboxStyled'
 import ComboboxNumber from '@/components/widgets/ComboboxNumber'
 import EstimationHelper from '@/components/pages/tasktype/EstimationHelper'
+import ImportModal from '@/components/modals/ImportModal'
+import ImportRenderModal from '@/components/modals/ImportRenderModal'
 import Schedule from '@/components/pages/schedule/Schedule'
 import SearchField from '@/components/widgets/SearchField'
 import SearchQueryList from '@/components/widgets/SearchQueryList'
 import TaskInfo from '@/components/sides/TaskInfo'
 import TaskList from '@/components/lists/TaskList'
 import TaskTypeName from '@/components/widgets/TaskTypeName'
-import ImportModal from '@/components/modals/ImportModal'
-import ImportRenderModal from '@/components/modals/ImportRenderModal'
+
+const filters = {
+  all(tasks) {
+    return tasks
+  },
+
+  dueweek(tasks) {
+    const todayWeek = moment().isoWeek()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return dueDate.isoWeek() === todayWeek
+    })
+  },
+
+  duepreviousweek(tasks) {
+    const previousWeek = moment().add('days', -7).isoWeek()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return dueDate.isoWeek() === previousWeek
+    })
+  },
+
+  duenextweek(tasks) {
+    const nextWeek = moment().add('days', 7).isoWeek()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return dueDate.isoWeek() === nextWeek
+    })
+  },
+
+  duebeforetoday(tasks, taskStatusMap) {
+    const today = moment()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return dueDate.isBefore(today)
+    })
+  },
+
+  duemonth(tasks) {
+    const todayMonth = moment().month()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return dueDate.month() === todayMonth
+    })
+  },
+
+  duepreviousmonth(tasks) {
+    const previousMonth = moment().add('months', -1).month()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return dueDate.month() === previousMonth
+    })
+  },
+
+  duenextmonth(tasks) {
+    const nextMonth = moment().add('months', 1).month()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return dueDate.month() === nextMonth
+    })
+  },
+
+  dueaftertoday(tasks, taskStatusMap) {
+    const today = moment()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return dueDate.isAfter(today)
+    })
+  },
+
+  overestimation(tasks) {
+    return tasks.filter(t => {
+      return t.estimation && t.duration > t.estimation
+    })
+  },
+
+  approvallate(tasks, taskStatusMap) {
+    const today = moment()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return (
+        dueDate.isBefore(today) &&
+        !(
+          taskStatusMap.get(t.task_status_id).is_feedback_request ||
+          taskStatusMap.get(t.task_status_id).is_done
+        )
+      )
+    })
+  },
+
+  donelate(tasks, taskStatusMap) {
+    const today = moment()
+    return tasks.filter(t => {
+      const dueDate = parseDate(t.due_date)
+      return (
+        dueDate.isBefore(today) && !taskStatusMap.get(t.task_status_id).is_done
+      )
+    })
+  }
+}
 
 export default {
   name: 'task-type-page',
@@ -277,8 +399,8 @@ export default {
   components: {
     ButtonSimple,
     CornerLeftUpIcon,
-    Combobox,
     ComboboxNumber,
+    ComboboxStyled,
     DateField,
     EstimationHelper,
     Schedule,
@@ -293,15 +415,36 @@ export default {
 
   entityListCache: [],
 
-  data () {
+  data() {
     return {
       activeTab: 'tasks',
       currentSort: 'entity_name',
       currentScheduleItem: null,
       currentTask: null,
+      contactSheetMode: false,
+      dueDateFilter: 'all',
       entityType: 'Asset',
+      estimationFilter: 'all',
+      priorityFilter: '-1',
       tasks: [],
       selection: {},
+      dueDateOptions: [
+        { label: 'all_tasks', value: 'all' },
+        { label: 'due_this_week', value: 'dueweek' },
+        { label: 'due_previous_week', value: 'duepreviousweek' },
+        { label: 'due_next_week', value: 'duenextweek' },
+        { label: 'due_this_month', value: 'duemonth' },
+        { label: 'due_previous_month', value: 'duepreviousmonth' },
+        { label: 'due_next_month', value: 'duenextmonth' },
+        { label: 'due_before_today', value: 'duebeforetoday' },
+        { label: 'due_after_today', value: 'dueaftertoday' }
+      ],
+      estimationOptions: [
+        { label: 'all_tasks', value: 'all' },
+        { label: 'estimation_over', value: 'overestimation' },
+        { label: 'estimation_approval_late', value: 'approvallate' },
+        { label: 'estimation_done_late', value: 'donelate' }
+      ],
       errors: {
         entities: false,
         importing: false,
@@ -311,16 +454,24 @@ export default {
         entities: false,
         importing: false
       },
+      priorityOptions: [
+        { label: 'all_tasks', value: '-1' },
+        { label: 'priority.normal', value: '0' },
+        { label: 'priority.high', value: '1' },
+        { label: 'priority.very_high', value: '2' },
+        { label: 'priority.emergency', value: '3' }
+      ],
       schedule: {
         currentColor: 'status',
-        endDate: moment().add(3, 'months'),
+        startDate: null,
+        endDate: null,
         scheduleItems: [],
         scheduleHeight: 800,
-        selectedEndDate: moment().add(3, 'months').toDate(),
-        selectedStartDate: moment().add(-1, 'months').toDate(),
-        startDate: moment().add(-1, 'months'),
+        taskTypeEndDate: null,
+        taskTypeStartDate: null,
         zoomLevel: 1,
         zoomOptions: [
+          { label: 'Week', value: 0 },
           { label: '1', value: 1 },
           { label: '2', value: 2 },
           { label: '3', value: 3 }
@@ -337,19 +488,12 @@ export default {
       },
       parsedCSV: [],
       importCsvFormData: {},
-      optionalColumns: [
-        'Estimation',
-        'Start date',
-        'Due date'
-      ],
-      dataMatchers: [
-        'Parent',
-        'Entity'
-      ]
+      optionalColumns: ['Estimation', 'Start date', 'Due date'],
+      dataMatchers: ['Parent', 'Entity']
     }
   },
 
-  created () {
+  created() {
     if (!this.currentProduction) {
       this.setProduction(this.$route.params.production_id)
     } else {
@@ -359,21 +503,31 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
+    this.clearSelectedTasks()
     const isAssets = this.$route.path.includes('assets')
     const isShots = this.$route.path.includes('shots')
-    this.entityType = isAssets ? 'Asset' : isShots ? 'Shot' : 'Edit'
+    const isEdits = this.$route.path.includes('edits')
+    const isSequences = this.$route.path.includes('sequences')
+    this.entityType = isAssets
+      ? 'Asset'
+      : isShots
+      ? 'Shot'
+      : isEdits
+      ? 'Edit'
+      : isSequences
+      ? 'Sequence'
+      : 'Episode'
     this.updateActiveTab()
     setTimeout(() => {
       this.initData(false)
-      if (this.$refs['schedule-widget']) {
-        this.$refs['schedule-widget'].scrollToToday()
-      }
+      this.resetScheduleScroll()
     }, 100)
     window.addEventListener('resize', this.resetScheduleHeight)
   },
 
-  beforeDestroy () {
+  beforeDestroy() {
+    this.clearSelectedTasks()
     window.removeEventListener('resize', this.resetScheduleHeight)
   },
 
@@ -385,7 +539,9 @@ export default {
       'currentProduction',
       'currentTaskType',
       'editsPath',
+      'episodesPath',
       'editMap',
+      'episodeMap',
       'isCurrentUserManager',
       'isCurrentUserSupervisor',
       'isTVShow',
@@ -393,6 +549,8 @@ export default {
       'organisation',
       'personMap',
       'selectedTasks',
+      'sequenceMap',
+      'sequencesPath',
       'sequenceSubscriptions',
       'shotsByEpisode',
       'shotMap',
@@ -403,27 +561,28 @@ export default {
       'user'
     ]),
 
-    isSupervisorInDepartment () {
+    taskTypeStartDate() {
+      return moment(this.schedule.taskTypeStartDate)
+    },
+
+    taskTypeEndDate() {
+      return moment(this.schedule.taskTypeEndDate)
+    },
+
+    isSupervisorInDepartment() {
       const departments = this.user.departments || []
-      return this.isCurrentUserManager ||
-        (
-          this.isCurrentUserSupervisor &&
-          departments.includes((this.currentTaskType || {}).department_id)
-        )
+      return (
+        this.isCurrentUserManager ||
+        (this.isCurrentUserSupervisor &&
+          departments.includes((this.currentTaskType || {}).department_id))
+      )
     },
 
-    entityMap () {
-      if (this.entityType === 'Asset') {
-        return this.assetMap
-      } else if (this.entityType === 'Shot') {
-        return this.shotMap
-      } else if (this.entityType === 'Edit') {
-        return this.editMap
-      }
-      return this.assetMap
+    entityMap() {
+      return this[`${this.entityType.toLowerCase()}Map`]
     },
 
-    locale () {
+    locale() {
       if (this.user.locale === 'fr_FR') {
         return fr
       } else {
@@ -431,17 +590,33 @@ export default {
       }
     },
 
-    startDisabledDates () {
+    productionStartDate() {
+      return parseDate(this.currentProduction.start_date)
+    },
+
+    productionEndDate() {
+      return parseDate(this.currentProduction.end_date)
+    },
+
+    disabledDates() {
       return {
         to: parseDate(this.currentProduction.start_date).toDate(),
-        from: this.schedule.endDate.toDate(),
+        from: parseDate(this.currentProduction.end_date).toDate(),
         days: [6, 0]
       }
     },
 
-    endDisabledDates () {
+    startDisabledDates() {
       return {
-        to: this.schedule.startDate.toDate(),
+        to: parseDate(this.currentProduction.start_date).toDate(),
+        from: parseDate(this.currentProduction.end_date).toDate(),
+        days: [6, 0]
+      }
+    },
+
+    endDisabledDates() {
+      return {
+        to: parseDate(this.currentProduction.start_date).toDate(),
         from: parseDate(this.currentProduction.end_date).toDate(),
         days: [6, 0]
       }
@@ -449,27 +624,22 @@ export default {
 
     // Meta
 
-    assetTasks () {
-      return this.getTasks(Array.from(this.assetMap.values()))
+    entityTasks() {
+      return this.getTasks(Array.from(this.entityMap.values()))
     },
 
-    shotTasks () {
-      return this.getTasks(Array.from(this.shotMap.values()))
-    },
-
-    editTasks () {
-      return this.getTasks(Array.from(this.editMap.values()))
-    },
-
-    title () {
+    title() {
       if (this.currentProduction) {
         if (this.isTVShow && this.currentEpisode) {
-          const episodeName = this.currentEpisode.id === 'all'
-            ? this.$t('main.all_assets')
-            : this.currentEpisode.name
-          return `${this.currentProduction.name} / ` +
-                 `${episodeName} / ` +
-                 `${this.currentTaskType.name}`
+          const episodeName =
+            this.currentEpisode.id === 'all'
+              ? this.$t('main.all_assets')
+              : this.currentEpisode.name
+          return (
+            `${this.currentProduction.name} / ` +
+            `${episodeName} / ` +
+            `${this.currentTaskType.name}`
+          )
         } else {
           return `${this.currentProduction.name} / ${this.currentTaskType.name}`
         }
@@ -480,7 +650,7 @@ export default {
 
     // Paths
 
-    backPath () {
+    backPath() {
       let route = {}
       if (this.isActiveTab('schedule')) {
         route = {
@@ -500,6 +670,12 @@ export default {
         if (this.currentTaskType.for_entity === 'Edit') {
           route = this.editsPath
         }
+        if (this.currentTaskType.for_entity === 'Episode') {
+          route = this.episodesPath
+        }
+        if (this.currentTaskType.for_entity === 'Sequence') {
+          route = this.sequencesPath
+        }
       }
       return {
         ...route,
@@ -507,21 +683,21 @@ export default {
       }
     },
 
-    tasksPath () {
+    tasksPath() {
       return this.getRoute('task-type')
     },
 
-    schedulePath () {
+    schedulePath() {
       return this.getRoute('task-type-schedule')
     },
 
-    estimationPath () {
+    estimationPath() {
       return this.getRoute('task-type-estimation')
     },
 
     // Helpers
 
-    sortOptions () {
+    sortOptions() {
       return [
         'entity_name',
         'task_status_short_name',
@@ -529,31 +705,32 @@ export default {
         'estimation',
         'duration',
         'retake_count',
+        'start_date',
         'due_date',
         'real_start_date',
         'end_date',
         'last_comment_date'
-      ].map((name) => ({ label: name, value: name }))
+      ].map(name => ({ label: name, value: name }))
     },
 
-    searchQueries () {
+    searchQueries() {
       return this.taskSearchQueries.filter(
         t => t.entity_type === this.entityType
       )
     },
 
-    scheduleTeam () {
-      const scheduleTeam = this.currentProduction.team.map((personId) => {
+    scheduleTeam() {
+      const scheduleTeam = this.currentProduction.team.map(personId => {
         return this.personMap.get(personId)
       })
       return sortPeople(scheduleTeam)
     },
 
-    scheduleWidget () {
+    scheduleWidget() {
       return this.$refs['schedule-widget']
     },
 
-    searchField () {
+    searchField() {
       return this.$refs['task-search-field']
     }
   },
@@ -574,10 +751,10 @@ export default {
       'uploadTaskTypeEstimations'
     ]),
 
-    initData (force) {
+    initData(force) {
       this.resetTasks()
-      this.focusSearchField()
-      if (this.tasks.length === 0) {
+      this.focusSearchField({ preventScroll: true })
+      if (this.tasks.length < 2) {
         this.loading.entities = true
         this.errors.entities = false
         this.initTaskType(force)
@@ -585,81 +762,83 @@ export default {
           .then(() => {
             this.loading.entities = false
             this.resetTasks()
-            this.focusSearchField()
-            const searchQuery =
-              this.searchField ? this.searchField.getValue() : ''
+            this.focusSearchField({ preventScroll: true })
+            const searchQuery = this.searchField
+              ? this.searchField.getValue()
+              : ''
             if (searchQuery) this.onSearchChange(searchQuery)
             setTimeout(() => {
               this.setSearchFromUrl()
+              this.resetTaskTypeDates()
             }, 200)
             if (this.isActiveTab('schedule')) {
               this.resetScheduleItems()
-              if (this.$refs['schedule-widget']) {
-                this.$refs['schedule-widget'].scrollToToday()
-              }
+              this.resetScheduleScroll()
             }
+
+            this.dueDateFilter = this.$route.query.duedate || 'all'
+            this.estimationFilter = this.$route.query.late || 'all'
+            this.priorityFilter = this.$route.query.priority || '-1'
+            this.onSearchChange(this.$route.query.search)
           })
-          .catch((err) => {
+          .catch(err => {
             console.error(err)
             this.loading.entities = false
             this.errors.entities = true
           })
       } else {
         this.loading.entities = true
-        this.setCurrentScheduleItem()
-          .then(() => {
-            this.loading.entities = false
-            if (this.isActiveTab('schedule')) {
-              this.resetScheduleItems()
-              if (this.$refs['schedule-widget']) {
-                this.$refs['schedule-widget'].scrollToToday()
-              }
-            }
-          })
+        this.setCurrentScheduleItem().then(() => {
+          this.resetTaskTypeDates()
+          this.loading.entities = false
+          if (this.isActiveTab('schedule')) {
+            this.resetScheduleItems()
+            this.resetScheduleScroll()
+          }
+        })
       }
     },
 
-    setCurrentScheduleItem () {
-      if (this.isTVShow) {
+    setCurrentScheduleItem() {
+      const isShots = this.$route.path.includes('shots')
+      if (this.isTVShow && isShots) {
         return this.loadEpisodeScheduleItems({
           production: this.currentProduction,
           taskType: this.currentTaskType
+        }).then(items => {
+          if (!items) {
+            Promise.resolve([])
+          } else {
+            this.currentScheduleItem = items.find(item => {
+              return (
+                item.task_type_id === this.currentTaskType.id &&
+                item.object_id === this.currentEpisode.id
+              )
+            })
+            Promise.resolve(this.currentScheduleItem)
+          }
         })
-          .then((items) => {
-            if (!items) {
-              Promise.resolve([])
-            } else {
-              this.currentScheduleItem = items.find((item) => {
-                return (
-                  item.task_type_id === this.currentTaskType.id &&
-                  item.object_id === this.currentEpisode.id
-                )
-              })
-              Promise.resolve(this.currentScheduleItem)
-            }
-          })
       } else {
-        return this.loadScheduleItems(this.currentProduction)
-          .then((items) => {
-            if (!items) {
-              Promise.resolve([])
-            } else {
-              this.currentScheduleItem = items.find((item) => {
-                return item.task_type_id === this.currentTaskType.id
-              })
-              Promise.resolve(this.currentScheduleItem)
-            }
-          })
+        return this.loadScheduleItems(this.currentProduction).then(items => {
+          if (!items) {
+            Promise.resolve([])
+          } else {
+            this.currentScheduleItem = items.find(item => {
+              return item.task_type_id === this.currentTaskType.id
+            })
+            Promise.resolve(this.currentScheduleItem)
+          }
+        })
       }
     },
 
     // Tabs
 
-    isActiveTab (tab) {
+    isActiveTab(tab) {
       return this.activeTab === tab
     },
 
-    updateActiveTab () {
+    updateActiveTab() {
       if (this.$route.path.indexOf('schedule') > 0) {
         this.activeTab = 'schedule'
       } else if (this.$route.path.indexOf('estimation') > 0) {
@@ -669,10 +848,11 @@ export default {
       }
     },
 
-    getRoute (section) {
+    getRoute(section) {
       const routeTaskTypeId = this.$route.params.task_type_id
-      const taskTypeId =
-        this.currentTaskType ? this.currentTaskType.id : routeTaskTypeId
+      const taskTypeId = this.currentTaskType
+        ? this.currentTaskType.id
+        : routeTaskTypeId
       const route = {
         name: section,
         params: {
@@ -680,31 +860,36 @@ export default {
           task_type_id: taskTypeId
         }
       }
-      if (this.isTVShow && this.currentEpisode) {
+      if (this.currentTaskType.for_entity === 'Episode') {
+        route.name = `episodes-${route.name}`
+      } else if (this.isTVShow && this.currentEpisode) {
         route.name = `episode-${route.name}`
         route.params.episode_id = this.currentEpisode.id
       }
+
       return route
     },
 
     // Search
 
-    onSearchChange (query) {
+    onSearchChange(query) {
       if (query && query.length !== 1) {
         query = query.toLowerCase().trim()
-        const descriptors = (this.currentProduction.descriptors || [])
-          .filter(d => d.entityType === this.entityType)
+        const descriptors = (this.currentProduction.descriptors || []).filter(
+          d => d.entityType === this.entityType
+        )
         const keywords = getKeyWords(query) || []
         const excludingKeyWords = getExcludingKeyWords(query) || []
-        const descFilters = getDescFilters(descriptors, query)
+        const descFilters = getDescFilters(descriptors, [], query)
+        const taskFilters = getTaskFilters(this.$options.taskIndex, query)
         if (
           keywords.length > 0 ||
           excludingKeyWords.length > 0 ||
-          descFilters.length > 0
+          descFilters.length > 0 ||
+          taskFilters.length > 0
         ) {
           let tasks = []
-          const filters = getTaskFilters(this.$options.taskIndex, query)
-            .concat(descFilters)
+          const filters = taskFilters.concat(descFilters)
           if (keywords.length > 0) {
             tasks = indexSearch(this.$options.taskIndex, keywords)
           } else {
@@ -724,63 +909,96 @@ export default {
       }
       this.setSearchInUrl()
       this.clearSelectedTasks()
+      if (filters[this.dueDateFilter]) {
+        this.tasks = filters[this.dueDateFilter](this.tasks)
+      }
+      if (filters[this.estimationFilter]) {
+        this.tasks = filters[this.estimationFilter](
+          this.tasks,
+          this.taskStatusMap
+        )
+      }
+      if (this.priorityFilter !== '-1') {
+        this.tasks = this.tasks.filter(
+          t => t.priority === parseInt(this.priorityFilter)
+        )
+      }
     },
 
-    saveSearchQuery (searchQuery) {
+    saveSearchQuery(searchQuery) {
       const entityType = this.entityType
       this.saveTaskSearch({ searchQuery, entityType })
-        .then(() => {
-        })
-        .catch((err) => {
+        .then(() => {})
+        .catch(err => {
           console.error(err)
         })
     },
 
-    removeSearchQuery (searchQuery) {
+    removeSearchQuery(searchQuery) {
       this.removeTaskSearch(searchQuery)
-        .then(() => {
-        })
-        .catch((err) => {
+        .then(() => {})
+        .catch(err => {
           console.error(err)
         })
+    },
+
+    updateUrlParams() {
+      const search = this.searchField.getValue()
+      const duedate = this.dueDateFilter
+      const late = this.estimationFilter
+      const priority = this.priorityFilter
+      this.$router.push({
+        query: { search, duedate, late, priority }
+      })
     },
 
     // Tasks
 
-    onTaskSelected (task) {
+    applyTaskFilters() {
+      this.onSearchChange(this.searchField.getValue())
+      this.sortTasks()
+      this.$refs['task-list'].resetSelection()
+      this.updateUrlParams()
+      this.clearSelectedTasks()
+    },
+
+    onTaskSelected(task) {
       this.currentTask = task
     },
 
-    resetTasks () {
-      let tasks = this.assetTasks
-      if (this.entityType === 'Shot') {
-        tasks = this.shotTasks
-      } else if (this.entityType === 'Edit') {
-        tasks = this.editTasks
+    resetTasks() {
+      let tasks = this.entityTasks
+
+      if (['Episode', 'Sequence'].includes(this.entityTypes)) {
+        tasks = tasks.filter(task => {
+          const entity = this.entityMap.get(task.entity_id)
+          return !entity.canceled
+        })
       }
-      tasks = tasks.filter((task) => {
-        const entity = this.entityMap.get(task.entity_id)
-        return !entity.canceled
-      })
       this.tasks = this.sortTasks(tasks)
       this.resetTaskIndex()
     },
 
-    resetTaskIndex () {
+    resetTaskIndex() {
       this.$options.taskIndex = buildSupervisorTaskIndex(
-        this.tasks, this.personMap, this.taskStatusMap
+        this.tasks,
+        this.personMap,
+        this.taskStatusMap
       )
-      this.$options.taskIndex.me =
-        indexSearch(this.$options.taskIndex, this.user.full_name.split(' '))
+      this.$options.taskIndex.me = indexSearch(
+        this.$options.taskIndex,
+        this.user.full_name.split(' ')
+      )
     },
 
-    getTasks (entities) {
+    getTasks(entities) {
       const tasks = []
       entities.forEach(entity => {
-        entity.tasks.forEach(taskId => {
-          const task = this.taskMap.get(taskId)
-          if (task) {
+        ;(entity.tasks || []).forEach(taskId => {
+          const task = this.taskMap.get(taskId.id || taskId)
+          if (task && !entity.canceled) {
             // Hack to allow filtering on linked entity metadata.
+
             task.data = entity.data
             if (task.task_type_id === this.currentTaskType.id) {
               tasks.push(task)
@@ -791,22 +1009,24 @@ export default {
       return tasks
     },
 
-    sortTasks (tasks) {
+    sortTasks(tasks) {
       if (!tasks) tasks = this.tasks
       const isDesc = [
         'task_status_short_name',
         'entity_name',
         'due_date'
-      ].includes(
-        this.currentSort
-      )
-      return tasks.sort(
-        firstBy(this.currentSort, isDesc ? 1 : -1)
-          .thenBy('entity_name')
-      )
+      ].includes(this.currentSort)
+      if (this.currentSort !== name) {
+        this.tasks = tasks.sort(
+          firstBy(this.currentSort, isDesc ? 1 : -1).thenBy('entity_name')
+        )
+      } else {
+        this.tasks = tasks.sort(firstBy('entity_name'))
+      }
+      return tasks
     },
 
-    onExportClick () {
+    onExportClick() {
       const taskLines = this.$refs['task-list'].getTableData()
       const nameData = [
         formatSimpleDate(moment()),
@@ -821,7 +1041,7 @@ export default {
       csv.buildCsvFile(name, taskLines)
     },
 
-    updateEstimation ({ taskId, days, item }) {
+    updateEstimation({ taskId, days, item }) {
       const estimation = daysToMinutes(this.organisation, days)
       const task = this.taskMap.get(taskId)
       let data = { estimation }
@@ -834,24 +1054,22 @@ export default {
         minutesToDays(this.organisation, estimation)
       )
       data.estimation = estimation
-      if (item && !item.startDate) {
-        item.startDate = parseDate(data.end_date)
-      }
-      if (item && !item.endDate) {
-        item.endDate = parseDate(data.end_date)
+      if (item) {
+        item.start_date = data.start_date
+        item.startDate = parseDate(data.start_date)
+        item.end_date = data.due_date
+        item.endDate = parseDate(data.due_date)
       }
       if (item && item.startDate && item.endDate) {
         item.parentElement.startDate = this.getMinDate(item.parentElement)
         item.parentElement.endDate = this.getMaxDate(item.parentElement)
       }
-
-      this.updateTask({ taskId, data })
-        .catch(console.error)
+      this.updateTask({ taskId, data }).catch(console.error)
     },
 
     // Schedule
 
-    resetScheduleItems () {
+    resetScheduleItems() {
       const taskAssignationMap = this.buildAssignationMap()
       let scheduleItems = this.scheduleTeam
         .map(person => this.buildPersonElement(person, taskAssignationMap))
@@ -866,14 +1084,14 @@ export default {
       this.schedule.scheduleItems = scheduleItems
     },
 
-    buildAssignationMap () {
+    buildAssignationMap() {
       const taskAssignationMap = { unassigned: [] }
-      this.scheduleTeam.forEach((person) => {
+      this.scheduleTeam.forEach(person => {
         if (person) taskAssignationMap[person.id] = []
       })
-      this.tasks.forEach((task) => {
+      this.tasks.forEach(task => {
         if (task.assignees.length > 0) {
-          task.assignees.forEach((personId) => {
+          task.assignees.forEach(personId => {
             if (!taskAssignationMap[personId]) {
               taskAssignationMap[personId] = []
             }
@@ -886,7 +1104,7 @@ export default {
       return taskAssignationMap
     },
 
-    buildPersonElement (person, taskAssignationMap) {
+    buildPersonElement(person, taskAssignationMap) {
       if (!person) return null
 
       let manDays = 0
@@ -921,15 +1139,22 @@ export default {
           expanded: true,
           loading: false,
           children: [],
-          editable: false
+          editable: false,
+          route: {
+            name: 'person-tab',
+            params: {
+              person_id: person.id,
+              tab: 'schedule'
+            }
+          }
         }
       }
 
-      const children = personTasks.map((task) => {
+      const children = personTasks.map(task => {
         const estimation = task.estimation
         let endDate
 
-        let startDate = this.schedule.startDate.clone()
+        let startDate = moment(this.schedule.taskTypeStartDate)
         if (task.start_date) {
           startDate = parseDate(task.start_date)
         } else if (task.real_start_date) {
@@ -984,7 +1209,7 @@ export default {
           loading: false,
           man_days: estimation,
           editable: this.isSupervisorInDepartment,
-          unresizable: estimation > 0,
+          unresizable: true,
           parentElement: personElement,
           color: this.getTaskElementColor(task, endDate),
           children: []
@@ -999,55 +1224,45 @@ export default {
       return personElement
     },
 
-    getTaskElementColor (task, endDate) {
+    getTaskElementColor(task, endDate) {
       if (this.schedule.currentColor === 'status') {
         let color = this.taskStatusMap.get(task.task_status_id).color
         if (color === '#f5f5f5') color = '#999'
         return color
       } else if (this.schedule.currentColor === 'late') {
-        const isLate = (
+        const isLate =
           !this.taskStatusMap.get(task.task_status_id).is_done &&
           endDate.isBefore(moment())
-        )
         return isLate ? '#FF3860' : '#999'
       } else {
         return null
       }
     },
 
-    saveTaskScheduleItem (item) {
-      if (!this.$options.savingBuffer) this.$options.savingBuffer = {}
-      if (!this.$options.savingBuffer[item.id]) {
-        this.$options.savingBuffer[item.id] = item
-        setTimeout(() => {
-          if (item.estimation) {
-            item.endDate = addBusinessDays(
-              item.startDate,
-              Math.ceil(minutesToDays(this.organisation, item.estimation))
-            )
+    saveTaskScheduleItem(item) {
+      if (item.estimation) {
+        item.endDate = addBusinessDays(
+          item.startDate,
+          Math.ceil(minutesToDays(this.organisation, item.estimation)) - 1
+        )
+      }
+      if (item.startDate && item.endDate) {
+        item.parentElement.startDate = this.getMinDate(item.parentElement)
+        item.parentElement.endDate = this.getMaxDate(item.parentElement)
+        this.updateTask({
+          taskId: item.id,
+          data: {
+            start_date: item.startDate.format('YYYY-MM-DD'),
+            due_date: item.endDate.format('YYYY-MM-DD')
           }
-          item = { ...this.$options.savingBuffer[item.id] }
-          if (item.startDate && item.endDate) {
-            item.parentElement.startDate = this.getMinDate(item.parentElement)
-            item.parentElement.endDate = this.getMaxDate(item.parentElement)
-            this.updateTask({
-              taskId: item.id,
-              data: {
-                start_date: item.startDate.format('YYYY-MM-DD'),
-                due_date: item.endDate.format('YYYY-MM-DD')
-              }
-            })
-          }
-          this.$options.savingBuffer[item.id] = undefined
-        }, 1000)
-      } else {
-        this.$options.savingBuffer[item.id] = item
+        })
       }
     },
 
-    getMinDate (personElement) {
-      let minDate = this.schedule.endDate.clone()
-      personElement.children.forEach((item) => {
+    getMinDate(personElement) {
+      const endDate = this.productionEndDate
+      let minDate = endDate.clone()
+      personElement.children.forEach(item => {
         if (item.startDate && item.startDate.isBefore(minDate)) {
           minDate = item.startDate
         }
@@ -1055,9 +1270,10 @@ export default {
       return minDate.clone()
     },
 
-    getMaxDate (personElement) {
-      let maxDate = this.schedule.startDate.clone()
-      personElement.children.forEach((item) => {
+    getMaxDate(personElement) {
+      const startDate = this.productionStartDate
+      let maxDate = startDate.clone()
+      personElement.children.forEach(item => {
         if (item.endDate && item.endDate.isAfter(maxDate)) {
           maxDate = item.endDate
         }
@@ -1065,11 +1281,11 @@ export default {
       return maxDate.clone()
     },
 
-    expandPersonElement (personElement) {
+    expandPersonElement(personElement) {
       personElement.expanded = !personElement.expanded
     },
 
-    resetScheduleHeight () {
+    resetScheduleHeight() {
       this.$nextTick(() => {
         if (this.isActiveTab('schedule')) {
           const pageHeight = this.$refs.page.offsetHeight
@@ -1082,23 +1298,23 @@ export default {
       })
     },
 
-    showImportModal () {
+    showImportModal() {
       this.modals.importing = true
     },
 
-    hideImportModal () {
+    hideImportModal() {
       this.modals.importing = false
     },
 
-    showImportRenderModal () {
+    showImportRenderModal() {
       this.modals.isImportRenderDisplayed = true
     },
 
-    hideImportRenderModal () {
+    hideImportRenderModal() {
       this.modals.isImportRenderDisplayed = false
     },
 
-    resetImport () {
+    resetImport() {
       this.errors.importing = false
       this.errors.importingError = null
       this.hideImportRenderModal()
@@ -1107,7 +1323,7 @@ export default {
       this.showImportModal()
     },
 
-    uploadImportFile (data) {
+    uploadImportFile(data) {
       const formData = new FormData()
       const filename = 'import.csv'
       const file = new File([data.join('\n')], filename, { type: 'text/csv' })
@@ -1121,89 +1337,135 @@ export default {
 
       this.uploadTaskTypeEstimations(this.importCsvFormData) // to change
         .then(() => {
-          this.loading.importing = false
           this.hideImportRenderModal()
         })
         .catch(err => {
-          this.loading.importing = false
           this.errors.importingError = err
           this.errors.importing = true
         })
+        .finally(() => {
+          this.loading.importing = false
+        })
     },
 
-    renderImport (data, mode) {
+    renderImport(data, mode) {
       this.loading.importing = true
       this.errors.importing = false
       if (mode === 'file') {
         data = data.get('file')
       }
-      csv.processCSV(data)
-        .then((results) => {
-          this.parsedCSV = results
-          this.hideImportModal()
-          this.loading.importing = false
-          this.showImportRenderModal()
-        })
+      csv.processCSV(data).then(results => {
+        this.parsedCSV = results
+        this.hideImportModal()
+        this.loading.importing = false
+        this.showImportRenderModal()
+      })
+    },
+
+    resetTaskTypeDates() {
+      if (this.currentScheduleItem) {
+        this.schedule.taskTypeStartDate = parseDate(
+          this.currentScheduleItem.start_date
+        ).toDate()
+        this.schedule.taskTypeEndDate = parseDate(
+          this.currentScheduleItem.end_date
+        ).toDate()
+      }
+    },
+
+    resetScheduleScroll() {
+      if (this.$refs['schedule-widget']) {
+        const today = moment()
+        if (
+          today.isBefore(moment(this.schedule.taskTypeStartDate)) ||
+          today.isAfter(moment(this.schedule.taskTypeEndDate))
+        ) {
+          this.$refs['schedule-widget'].scrollToDate(
+            moment(this.schedule.taskTypeStartDate).add('days', 20)
+          )
+        } else {
+          this.$refs['schedule-widget'].scrollToToday()
+        }
+      }
     }
   },
 
   watch: {
-    $route () {
+    $route() {
       this.updateActiveTab()
     },
 
-    currentProduction () {
+    currentProduction() {
       this.initData(true)
     },
 
-    currentSort () {
+    // Quickfix for the edge case where the backPath is not properly set
+    // because it was set when the episode was not fully loaded.
+    currentEpisode() {
+      if (this.currentEpisode && !this.backPath.params.episode_id) {
+        this.$store.commit('RESET_PRODUCTION_PATH', {
+          productionId: this.currentProduction.id,
+          episodeId: this.currentEpisode.id
+        })
+      }
+    },
+
+    dueDateFilter() {
+      this.applyTaskFilters()
+    },
+
+    estimationFilter() {
+      this.applyTaskFilters()
+    },
+
+    priorityFilter() {
+      this.applyTaskFilters()
+    },
+
+    currentSort() {
       this.sortTasks()
       this.$refs['task-list'].resetSelection()
       this.clearSelectedTasks()
     },
 
-    'schedule.currentColor' () {
+    'schedule.currentColor'() {
       this.resetScheduleItems()
     },
 
-    activeTab () {
+    activeTab() {
       if (this.isActiveTab('schedule')) {
         this.resetScheduleItems()
         this.resetScheduleHeight()
         this.$nextTick(() => {
-          if (this.$refs['schedule-widget']) {
-            this.$refs['schedule-widget'].scrollToToday()
-          }
+          this.resetScheduleScroll()
         })
       }
     },
 
-    currentScheduleItem () {
+    currentScheduleItem() {
       if (this.currentScheduleItem) {
-        this.schedule.startDate =
-          parseDate(this.currentScheduleItem.start_date)
-        this.schedule.endDate = parseDate(this.currentScheduleItem.end_date)
-        this.schedule.selectedStartDate = this.schedule.startDate.toDate()
-        this.schedule.selectedEndDate = this.schedule.endDate.toDate()
+        this.resetTaskTypeDates()
       }
     },
 
-    'schedule.selectedStartDate' () {
-      const newDate = formatSimpleDate(this.schedule.selectedStartDate)
+    'schedule.taskTypeStartDate'() {
+      const newDate = formatSimpleDate(this.schedule.taskTypeStartDate)
       if (newDate !== this.currentScheduleItem.start_date) {
-        this.schedule.startDate = parseDate(newDate)
-        this.currentScheduleItem.startDate = this.schedule.startDate
-        this.currentScheduleItem.endDate = this.schedule.endDate
+        this.currentScheduleItem.startDate = moment(
+          this.schedule.taskTypeStartDate
+        )
+        this.currentScheduleItem.endDate = moment(this.schedule.taskTypeEndDate)
         this.saveScheduleItem(this.currentScheduleItem)
       }
     },
 
-    'schedule.selectedEndDate' () {
-      const newDate = formatSimpleDate(this.schedule.selectedEndDate)
+    'schedule.taskTypeEndDate'() {
+      const newDate = formatSimpleDate(this.schedule.taskTypeEndDate)
       if (newDate !== this.currentScheduleItem.end_date) {
-        this.schedule.endDate = parseDate(newDate)
-        this.currentScheduleItem.startDate = this.schedule.startDate
-        this.currentScheduleItem.endDate = this.schedule.endDate
+        this.currentScheduleItem.startDate = moment(
+          this.schedule.taskTypeStartDate
+        )
+        this.currentScheduleItem.endDate = moment(this.schedule.taskTypeEndDate)
         this.saveScheduleItem(this.currentScheduleItem)
       }
     }
@@ -1211,15 +1473,25 @@ export default {
 
   socket: {
     events: {
-      'task:update' (eventData) {
-        if (this.taskMap.get(eventData.task_id)) {
-          setTimeout(this.resetTaskIndex, 1000)
+      'task:update'(eventData) {
+        if (
+          this.taskMap.get(eventData.task_id) &&
+          !this.isActiveTab('schedule')
+        ) {
+          setTimeout(() => {
+            this.resetTaskIndex()
+            this.$nextTick(() => {
+              if (!this.selectedTasks.get(eventData.task_id)) {
+                this.onSearchChange(this.searchField.getValue())
+              }
+            })
+          }, 1000)
         }
       }
     }
   },
 
-  metaInfo () {
+  metaInfo() {
     return {
       title: `${this.title} - Kitsu`
     }
@@ -1264,7 +1536,6 @@ export default {
 }
 
 .main-column {
-  border-right: 3px solid $light-grey;
   overflow: hidden;
 }
 
@@ -1273,7 +1544,7 @@ export default {
 }
 
 .field {
-  margin: 0;
+  margin-bottom: 0;
 }
 
 .query-list {

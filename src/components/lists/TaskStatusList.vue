@@ -1,86 +1,80 @@
 <template>
-<div class="data-list">
-  <div class="datatable-wrapper">
-    <table class="datatable">
-      <thead class="datatable-head">
-        <tr>
-          <th scope="col" class="name">
-            {{ $t('task_status.fields.name') }}
-          </th>
-          <th scope="col" class="short-name">
-            {{ $t('task_status.fields.short_name') }}
-          </th>
-          <th scope="col" class="is-default">
-            {{ $t('task_status.fields.is_default') }}
-          </th>
-          <th scope="col" class="is-done">
-            {{ $t('task_status.fields.is_done') }}
-          </th>
-          <th scope="col" class="is-retake">
-            {{ $t('task_status.fields.is_retake') }}
-          </th>
-          <th scope="col" class="is-artist-allowed">
-            {{ $t('task_status.fields.is_artist_allowed') }}
-          </th>
-          <th scope="col" class="is-client-allowed">
-            {{ $t('task_status.fields.is_client_allowed') }}
-          </th>
-          <th scope="col" class="is-feedback-request">
-            {{ $t('task_status.fields.is_feedback_request') }}
-          </th>
-          <th scope="col" class="actions"></th>
-        </tr>
-      </thead>
-      <tbody class="datatable-body">
-        <tr class="datatable-row" v-for="entry in entries" :key="entry.id">
-          <td class="name">
-            {{ entry.name }}
-          </td>
-          <task-status-name class="short-name" :entry="entry" />
-          <td class="is-default">
-            {{ formatBoolean(entry.is_default) }}
-          </td>
-          <td class="is-done">
-            {{ formatBoolean(entry.is_done) }}
-          </td>
-          <td class="is-retake">
-            {{ formatBoolean(entry.is_retake) }}
-          </td>
-          <td class="is-artist-allowed">
-            {{ formatBoolean(entry.is_artist_allowed) }}
-          </td>
-          <td class="is-client-allowed">
-            {{ formatBoolean(entry.is_client_allowed) }}
-          </td>
-          <td class="is-feedback-request">
-            {{ formatBoolean(entry.is_feedback_request) }}
-          </td>
-          <row-actions-cell
-            :entry-id="entry.id"
-            :hide-delete="entry.is_default === true"
-            @edit-clicked="$emit('edit-clicked', entry)"
-            @delete-clicked="$emit('delete-clicked', entry)"
-          />
-        </tr>
-      </tbody>
-    </table>
+  <div class="data-list">
+    <div class="datatable-wrapper">
+      <table class="datatable">
+        <thead class="datatable-head">
+          <tr>
+            <th scope="col" class="name">
+              {{ $t('task_status.fields.name') }}
+            </th>
+            <th scope="col" class="short-name">
+              {{ $t('task_status.fields.short_name') }}
+            </th>
+            <th scope="col" class="is-default">
+              {{ $t('task_status.fields.is_default') }}
+            </th>
+            <th scope="col" class="is-done">
+              {{ $t('task_status.fields.is_done') }}
+            </th>
+            <th scope="col" class="is-retake">
+              {{ $t('task_status.fields.is_retake') }}
+            </th>
+            <th scope="col" class="is-artist-allowed">
+              {{ $t('task_status.fields.is_artist_allowed') }}
+            </th>
+            <th scope="col" class="is-client-allowed">
+              {{ $t('task_status.fields.is_client_allowed') }}
+            </th>
+            <th scope="col" class="is-feedback-request">
+              {{ $t('task_status.fields.is_feedback_request') }}
+            </th>
+            <th scope="col" class="actions"></th>
+          </tr>
+        </thead>
+        <tbody class="datatable-body">
+          <tr class="datatable-row" v-for="entry in entries" :key="entry.id">
+            <td class="name">
+              {{ entry.name }}
+            </td>
+            <task-status-name class="short-name" :entry="entry" />
+            <boolean-cell class="is-default" :value="entry.is_default" />
+            <boolean-cell class="is-done" :value="entry.is_done" />
+            <boolean-cell class="is-retake" :value="entry.is_retake" />
+            <boolean-cell
+              class="is-artist-allowed"
+              :value="entry.is_artist_allowed"
+            />
+            <boolean-cell
+              class="is-client-allowed"
+              :value="entry.is_client_allowed"
+            />
+            <boolean-cell
+              class="is-feedback-request"
+              :value="entry.is_feedback_request"
+            />
+            <row-actions-cell
+              :entry-id="entry.id"
+              :hide-delete="entry.is_default === true"
+              @edit-clicked="$emit('edit-clicked', entry)"
+              @delete-clicked="$emit('delete-clicked', entry)"
+            />
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <table-info :is-loading="isLoading" :is-error="isError" />
+
+    <p class="has-text-centered nb-task-status">
+      {{ entries.length }} {{ $tc('task_status.number', entries.length) }}
+    </p>
   </div>
-
-  <table-info
-    :is-loading="isLoading"
-    :is-error="isError"
-  />
-
-  <p class="has-text-centered nb-task-status">
-    {{ entries.length }} {{ $tc('task_status.number', entries.length) }}
-  </p>
-
-</div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import { formatListMixin } from '@/components/mixins/format'
+import BooleanCell from '@/components/cells/BooleanCell'
 import RowActionsCell from '@/components/cells/RowActionsCell'
 import TableInfo from '@/components/widgets/TableInfo'
 import TaskStatusName from '@/components/cells/TaskStatusName'
@@ -88,32 +82,41 @@ import TaskStatusName from '@/components/cells/TaskStatusName'
 export default {
   name: 'task-status-list',
   mixins: [formatListMixin],
-  props: [
-    'entries',
-    'isLoading',
-    'isError'
-  ],
-  data () {
+
+  props: {
+    entries: {
+      type: Array,
+      default: () => []
+    },
+    isError: {
+      type: Boolean,
+      default: false
+    },
+    isLoading: {
+      type: Boolean,
+      default: false
+    }
+  },
+
+  data() {
     return {}
   },
   components: {
+    BooleanCell,
     RowActionsCell,
     TableInfo,
     TaskStatusName
   },
   computed: {
-    ...mapGetters([
-    ])
+    ...mapGetters([])
   },
   methods: {
-    ...mapActions([
-    ])
+    ...mapActions([])
   }
 }
 </script>
 
 <style lang="scss" scoped>
-
 .datatable-body tr:first-child th,
 .datatable-body tr:first-child td {
   border-top: 0;
@@ -134,7 +137,9 @@ export default {
 .is-default,
 .is-retake,
 .is-artist-allowed,
-.is-client-allowed {
+.is-client-allowed,
+.is-feedback-request {
+  text-align: center;
   width: 140px;
   min-width: 140px;
 }

@@ -1,57 +1,56 @@
 <template>
-<div
-  class="flexrow production-name"
-  v-tooltip.right="tooltipOptions"
->
-  <router-link
-    class="flexrow flexrow-item"
-    :to="productionRoute"
-    v-if="!noLink"
-  >
-    <div
-       class="flexrow-item avatar has-text-centered"
-       v-if="withAvatar"
-       v-bind:style="{
-       background: getAvatarColor(entry),
-       width: size + 'px',
-       height: size + 'px',
-       'font-size': (size - 15) + 'px',
-       'line-height': size + 'px'
-    }">
-      <span v-if="!entry.has_avatar">
-        {{ generateAvatar(entry) }}
+  <div class="flexrow production-name" :title="productionInfo">
+    <router-link
+      class="flexrow flexrow-item"
+      :to="productionRoute"
+      v-if="isLink"
+    >
+      <div
+        class="flexrow-item avatar has-text-centered"
+        v-if="withAvatar"
+        v-bind:style="{
+          background: getAvatarColor(entry),
+          width: size + 'px',
+          height: size + 'px',
+          'font-size': size - 15 + 'px',
+          'line-height': size + 'px'
+        }"
+      >
+        <span v-if="!entry.has_avatar">
+          {{ generateAvatar(entry) }}
+        </span>
+        <span v-else>
+          <img :src="getThumbnailPath(entry)" />
+        </span>
+      </div>
+      <span class="flexrow-item" v-if="!onlyAvatar">
+        {{ entry.name }}
       </span>
-      <span v-else>
-        <img :src="getThumbnailPath(entry)" />
+    </router-link>
+    <div class="flexrow flexrow-item" v-else>
+      <div
+        class="flexrow-item avatar has-text-centered"
+        v-if="withAvatar"
+        v-bind:style="{
+          background: getAvatarColor(entry),
+          width: size + 'px',
+          height: size + 'px',
+          'font-size': size - 15 + 'px',
+          'line-height': size + 'px'
+        }"
+      >
+        <span v-if="!entry.has_avatar">
+          {{ generateAvatar(entry) }}
+        </span>
+        <span v-else>
+          <img :src="getThumbnailPath(entry)" />
+        </span>
+      </div>
+      <span class="flexrow-item" v-if="!onlyAvatar">
+        {{ entry.name }}
       </span>
     </div>
-    <span class="flexrow-item" v-if="!onlyAvatar">
-      {{ entry.name }}
-    </span>
-  </router-link>
-  <div class="flexrow flexrow-item" v-else>
-    <div
-       class="flexrow-item avatar has-text-centered"
-       v-if="withAvatar"
-       v-bind:style="{
-       background: getAvatarColor(entry),
-       width: size + 'px',
-       height: size + 'px',
-       'font-size': (size - 15) + 'px',
-       'line-height': size + 'px'
-    }">
-      <span v-if="!entry.has_avatar">
-        {{ generateAvatar(entry) }}
-      </span>
-      <span v-else>
-        <img :src="getThumbnailPath(entry)" />
-      </span>
-    </div>
-    <span class="flexrow-item" v-if="!onlyAvatar">
-      {{ entry.name }}
-    </span>
   </div>
-</div>
 </template>
 
 <script>
@@ -86,17 +85,16 @@ export default {
       default: false,
       type: Boolean
     },
-    noLink: {
-      default: false,
+    isLink: {
+      default: true,
       type: Boolean
     }
   },
 
   computed: {
-    ...mapGetters([
-    ]),
+    ...mapGetters([]),
 
-    productionRoute () {
+    productionRoute() {
       const route = {
         name: this.lastProductionScreen,
         params: {
@@ -110,7 +108,7 @@ export default {
       return route
     },
 
-    productionInfo () {
+    productionInfo() {
       const fps = this.entry ? this.entry.fps : null
       const ratio = this.entry ? this.entry.ratio : null
       const resolution = this.entry ? this.entry.resolution : null
@@ -121,36 +119,26 @@ export default {
         infos.push(`${this.$t('productions.fields.resolution')}: ${resolution}`)
       }
       if (infos.length > 0 && this.isTooltip) {
-        return infos.join('<br>')
+        return infos.join(' - ')
       } else {
         return ''
-      }
-    },
-
-    tooltipOptions () {
-      return {
-        content: this.productionInfo,
-        delay: {
-          hide: 5000
-        }
       }
     }
   },
 
   methods: {
-    ...mapActions([
-    ]),
+    ...mapActions([]),
 
-    generateAvatar (entry) {
+    generateAvatar(entry) {
       const firstLetter = entry.name.length > 0 ? entry.name[0] : 'P'
       return firstLetter.toUpperCase()
     },
 
-    getAvatarColor (entry) {
+    getAvatarColor(entry) {
       return colors.fromString(entry.name)
     },
 
-    getThumbnailPath (production) {
+    getThumbnailPath(production) {
       return `/api/pictures/thumbnails/projects/${production.id}.png`
     }
   }

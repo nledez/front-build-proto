@@ -1,18 +1,18 @@
 <template>
-<div ref="container" class="video-wrapper filler flexrow-item">
-  <video
-    ref="player1"
-    preload="auto"
-    :muted="muted"
-    @ended="$emit('play-next')"
-  />
-  <video
-    ref="player2"
-    preload="auto"
-    :muted="muted"
-    @ended="$emit('play-next')"
-  />
-</div>
+  <div ref="container" class="video-wrapper filler flexrow-item">
+    <video
+      ref="player1"
+      preload="auto"
+      :muted="muted"
+      @ended="$emit('play-next')"
+    />
+    <video
+      ref="player2"
+      preload="auto"
+      :muted="muted"
+      @ended="$emit('play-next')"
+    />
+  </div>
 </template>
 
 <script>
@@ -34,8 +34,7 @@ import { floorToFrame, roundToFrame } from '@/lib/video'
 export default {
   name: 'raw-video-player',
 
-  components: {
-  },
+  components: {},
 
   props: {
     entities: {
@@ -62,74 +61,85 @@ export default {
       type: Number,
       default: 0
     },
-    name: { // Debug purpose
+    name: {
+      // Debug purpose
       type: String,
       default: 'main'
+    },
+    handleIn: {
+      type: Number,
+      default: 0
+    },
+    handleOut: {
+      type: Number,
+      default: 0
     }
   },
 
-  data () {
+  data() {
     return {
-      currentPlayer: this.player1,
+      currentPlayer: undefined,
       isPlaying: false,
-      nextPlayer: this.player2,
+      nextPlayer: undefined,
       playingIndex: 0
     }
   },
 
   // Video need to be resized after each window size change. It's due
   // to a HTML5 limitation related to video height.
-  mounted () {
+  mounted() {
     this.resetHeight()
     this.player1.addEventListener('loadedmetadata', this.emitLoadedEvent)
     window.addEventListener('resize', this.resetHeight)
     this.$options.currentTimeCalls = []
+    if (this.video && this.video.readyState === 4) {
+      this.$emit('metadata-loaded', event)
+      this.resetHeight()
+    }
   },
 
-  beforeDestroy () {
+  beforeDestroy() {
     window.removeEventListener('resize', this.resetHeight)
     this.player1.removeEventListener('loadedmetadata', this.emitLoadedEvent)
   },
 
   computed: {
-    ...mapGetters([
-      'currentProduction'
-    ]),
+    ...mapGetters(['currentProduction']),
 
-    container () {
+    container() {
       return this.$refs.container
     },
 
-    fps () {
-      return parseInt(this.currentProduction.fps || '24')
+    fps() {
+      return parseFloat(this.currentProduction.fps || '24')
     },
 
-    player1 () {
+    player1() {
       return this.$refs.player1
     },
 
-    player2 () {
+    player2() {
       return this.$refs.player2
     },
 
-    frameDuration () {
+    frameDuration() {
       return Math.round((1 / this.fps) * 10000) / 10000
     }
   },
 
   methods: {
-
     // Helpers
 
-    emitLoadedEvent (event) {
+    emitLoadedEvent(event) {
       this.$emit('metadata-loaded', event)
     },
 
-    getMoviePath (entity) {
+    getMoviePath(entity) {
       if (entity.preview_file_extension === 'mp4') {
         let previewId
-        if (this.currentPreviewIndex === 0 ||
-            this.currentPreviewIndex > (entity.preview_file_previews.length)
+        if (
+          this.currentPreviewIndex === 0 ||
+          this.currentPreviewIndex > entity.preview_file_previews.length
         ) {
           previewId = entity.preview_file_id
         } else {
@@ -146,28 +156,28 @@ export default {
       }
     },
 
-    getWidth () {
+    getWidth() {
       return this.currentPlayer ? this.currentPlayer.offsetWidth : 0
     },
 
-    getHeight () {
+    getHeight() {
       return this.currentPlayer ? this.currentPlayer.offsetHeight : 0
     },
 
-    getVideoRatio () {
+    getVideoRatio() {
       const height = this.getVideoHeight()
       return height ? this.getVideoWidth() / height : 0
     },
 
-    getVideoWidth () {
+    getVideoWidth() {
       return this.currentPlayer ? this.currentPlayer.videoWidth : 0
     },
 
-    getVideoHeight () {
+    getVideoHeight() {
       return this.currentPlayer ? this.currentPlayer.videoHeight : 0
     },
 
-    clear () {
+    clear() {
       if (this.currentPlayer) {
         this.currentPlayer.src = ''
         this.currentPlayer.removeAttribute('src')
@@ -175,13 +185,14 @@ export default {
       }
     },
 
-    resetHeight (height) {
+    resetHeight(height) {
       this.$nextTick(() => {
         if (this.currentPlayer) this.currentPlayer.style.height = '0px'
         if (this.nextPlayer) this.nextPlayer.style.height = '0px'
         if (this.container) {
           height = height || this.container.offsetHeight
-          if (this.currentPlayer) this.currentPlayer.style.height = `${height}px`
+          if (this.currentPlayer)
+            this.currentPlayer.style.height = `${height}px`
           if (this.nextPlayer) this.nextPlayer.style.height = `${height}px`
         }
       })
@@ -189,7 +200,7 @@ export default {
 
     // Navigation
 
-    getNextIndex (index) {
+    getNextIndex(index) {
       let i = index + 1 >= this.entities.length ? 0 : index + 1
       // While we don't come back to initial entity and we have video previews
       while (
@@ -203,19 +214,21 @@ export default {
       return i
     },
 
-    getPreviousIndex (index) {
+    getPreviousIndex(index) {
       let i = index - 1 >= 0 ? index - 1 : this.entities.length - 1
       // While we don't come back to initial entity and we have video previews
-      while (i !== index &&
-             this.entities[i] &&
-             this.entities[i].preview_file_extension !== 'mp4') {
+      while (
+        i !== index &&
+        this.entities[i] &&
+        this.entities[i].preview_file_extension !== 'mp4'
+      ) {
         i--
         if (i < 0) i = this.entities.length
       }
       return i
     },
 
-    goPreviousFrame () {
+    goPreviousFrame() {
       if (this.currentPlayer) {
         const time = this.currentTimeRaw
         let newTime = floorToFrame(time - this.frameDuration, this.fps)
@@ -225,7 +238,7 @@ export default {
       }
     },
 
-    goNextFrame () {
+    goNextFrame() {
       if (this.currentPlayer) {
         const time = this.currentTimeRaw
         let newTime = floorToFrame(time + this.frameDuration, this.fps)
@@ -235,24 +248,22 @@ export default {
       }
     },
 
-    loadPreviousEntity () {
+    loadPreviousEntity() {
       this.loadEntity(this.getPreviousIndex(this.currentIndex))
       this.$emit('entity-change', this.currentIndex)
     },
 
-    loadNextEntity () {
+    loadNextEntity() {
       const newIndex = this.getNextIndex(this.currentIndex)
       this.loadEntity(newIndex)
       this.$emit('entity-change', this.currentIndex)
     },
 
-    reloadCurrentEntity (silent = false) {
-      this.loadEntity(
-        this.currentIndex, this.currentPlayer.currentTime, silent
-      )
+    reloadCurrentEntity(silent = false) {
+      this.loadEntity(this.currentIndex, this.currentPlayer.currentTime, silent)
     },
 
-    loadEntity (index = 0, currentTime = 0, silent = false) {
+    loadEntity(index = 0, currentTime = 0, silent = false) {
       if (index < this.entities.length) {
         const nextIndex = this.getNextIndex(index)
         const entity = this.entities[index]
@@ -287,22 +298,24 @@ export default {
 
     // Playing
 
-    pause () {
+    pause() {
       if (this.currentPlayer) {
         this.currentPlayer.pause()
         this.currentPlayer.curentTime = roundToFrame(
-          this.currentPlayer.currentTime, this.fps
+          this.currentPlayer.currentTime,
+          this.fps
         )
         this.currentTimeRaw = this.currentPlayer.currentTime
-        const frameNumber =
-          Math.round(this.currentPlayer.currentTime / this.frameDuration)
+        const frameNumber = Math.round(
+          this.currentPlayer.currentTime / this.frameDuration
+        )
         this.$emit('frame-update', frameNumber)
         clearInterval(this.$options.playLoop)
       }
       this.isPlaying = false
     },
 
-    play () {
+    play() {
       let entity = this.entities[this.currentIndex]
       if (entity) {
         if (!entity.preview_file_id) this.loadNextEntity()
@@ -317,17 +330,20 @@ export default {
       }
     },
 
-    runEmitTimeUpdateLoop () {
+    runEmitTimeUpdateLoop() {
       clearInterval(this.$options.playLoop)
       this.$options.playLoop = setInterval(() => {
         this.updateTime(this.currentPlayer.currentTime)
       }, 1000 / this.fps)
     },
 
-    playNext () {
+    playNext(handleIn) {
       if (!this.isPlaying) return
+      handleIn = handleIn || this.handleIn
       if (this.isRepeating) {
-        this.currentPlayer.currentTime = this.frameDuration
+        this.currentPlayer.currentTime = this.handleIn
+          ? this.handleIn * this.frameDuration
+          : this.frameDuration
         this.currentPlayer.play()
         this.$emit('repeat')
       } else {
@@ -337,6 +353,9 @@ export default {
 
         if (this.currentPlayer) this.currentPlayer.style.display = 'none'
         if (this.nextPlayer) {
+          this.nextPlayer.currentTime = handleIn
+            ? handleIn * this.frameDuration
+            : this.frameDuration
           this.nextPlayer.style.display = 'block'
           this.nextPlayer.play()
         }
@@ -346,7 +365,7 @@ export default {
       }
     },
 
-    getCurrentTime () {
+    getCurrentTime() {
       if (this.currentPlayer) {
         return this.currentPlayer.currentTime
       } else {
@@ -354,7 +373,7 @@ export default {
       }
     },
 
-    getLastPushedCurrentTime () {
+    getLastPushedCurrentTime() {
       const length = this.$options.currentTimeCalls.length
       if (length > 0) {
         return this.$options.currentTimeCalls[length - 1]
@@ -363,21 +382,21 @@ export default {
       }
     },
 
-    getCurrentTimeRaw (currentTime) {
+    getCurrentTimeRaw(currentTime) {
       return this.currentPlayer.currentTime
     },
 
-    setCurrentTimeRaw (currentTime) {
+    setCurrentTimeRaw(currentTime) {
       if (this.currentPlayer) {
         this.currentPlayer.currentTime = currentTime
       }
     },
 
-    setCurrentFrame (frameNumber) {
+    setCurrentFrame(frameNumber) {
       this._setCurrentTime(frameNumber * this.frameDuration)
     },
 
-    _setCurrentTime (newTime) {
+    _setCurrentTime(newTime) {
       if (!this.$options.currentTimeCalls) {
         this.$options.currentTimeCalls = []
       }
@@ -395,23 +414,26 @@ export default {
       return newTime
     },
 
-    runSetCurrentTime (currentTime) {
+    runSetCurrentTime(currentTime) {
+      const isChromium = !!window.chrome
+      const change = isChromium ? this.frameDuration : 0
       if (
         this.currentPlayer &&
-        this.currentPlayer.currentTime !== currentTime + this.frameDuration
+        this.currentPlayer.currentTime !== currentTime + change
       ) {
         // tweaks needed because the html video player is messy with frames
-        this.currentPlayer.currentTime =
-          currentTime + this.frameDuration + 0.01
+        this.currentPlayer.currentTime = currentTime + change + 0.01
         this.onTimeUpdate()
       }
     },
 
-    onTimeUpdate () {
+    onTimeUpdate() {
+      const isChromium = !!window.chrome
+      const change = isChromium ? this.frameDuration : 0
       if (this.currentPlayer) {
-        this.currentTimeRaw = this.currentPlayer.currentTime - this.frameDuration
+        this.currentTimeRaw = this.currentPlayer.currentTime - change
       } else {
-        this.currentTimeRaw = 0 + this.frameDuration
+        this.currentTimeRaw = 0 + change
       }
       this.$emit(
         'frame-update',
@@ -419,7 +441,7 @@ export default {
       )
     },
 
-    switchPlayers () {
+    switchPlayers() {
       const nextIndex = this.getNextIndex(this.currentIndex)
       const nextEntity = this.entities[nextIndex]
       this.tmpPlayer = this.currentPlayer
@@ -433,37 +455,44 @@ export default {
       this.setSpeed(rate)
     },
 
-    updateTime (time) {
+    updateTime(time) {
       const frameNumber = Math.round(time / this.frameDuration)
       this.$emit('frame-update', frameNumber)
     },
 
-    updateMaxDuration () {
+    updateMaxDuration() {
       if (this.currentPlayer) {
         this.$emit('max-duration-update', this.currentPlayer.duration)
       }
     },
 
-    getSpeed (rate) {
+    getSpeed(rate) {
       return this.currentPlayer ? this.currentPlayer.playbackRate : 0
     },
 
-    setSpeed (rate) {
+    setSpeed(rate) {
       this.$options.rate = rate
       if (this.currentPlayer) this.currentPlayer.playbackRate = rate
       if (this.nextPlayer) this.nextPlayer.playbackRate = rate
+    },
+
+    getNaturalDimensions() {
+      return {
+        height: this.currentPlayer.videoHeight,
+        width: this.currentPlayer.videoWidth
+      }
     }
   },
 
   watch: {
-    isHd () {
+    isHd() {
       if (this.currentPlayer) {
         this.reloadCurrentEntity()
         if (this.isPlaying) this.play()
       }
     },
 
-    entities () {
+    entities() {
       if (this.entities.length > 0) {
         this.loadEntity(0)
         this.pause()
@@ -472,10 +501,12 @@ export default {
         const entity = this.entities[this.currentIndex]
         if (entity && !entity.preview_file_id) this.loadNextEntity()
       }
-      setTimeout(this.resetHeight, 300)
+      setTimeout(() => {
+        this.resetHeight()
+      }, 300)
     },
 
-    currentPreviewIndex () {
+    currentPreviewIndex() {
       if (!this.isPlaying) {
         const silent = true
         this.setCurrentTimeRaw(0)
@@ -498,5 +529,4 @@ export default {
 .container {
   max-height: 100%;
 }
-
 </style>

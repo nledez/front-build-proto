@@ -1,37 +1,36 @@
 <template>
-<div
-  id="model-container"
-  :style="{
-    height: defaultHeight ? defaultHeight + 'px' : '100%',
-    width: '100%'
-  }"
-  :class="{
-    light: light && !readOnly
-  }"
->
-  <model-viewer
-    id="model-viewer"
-    loading="eager"
-    camera-controls
-    :src="previewUrl"
+  <div
+    id="model-container"
+    :style="{
+      height: defaultHeight ? defaultHeight + 'px' : '100%',
+      width: '100%'
+    }"
+    :class="{
+      light: light && !readOnly
+    }"
   >
-  </model-viewer>
-</div>
+    <model-viewer
+      id="model-viewer"
+      loading="eager"
+      camera-controls
+      :src="previewUrl"
+      autoplay
+    >
+    </model-viewer>
+  </div>
 </template>
 
 <script>
-import {
-} from 'vue-feather-icons'
+import {} from 'vue-feather-icons'
 
 import('@google/model-viewer')
 
 export default {
   name: 'object-viewer',
 
-  components: {
-  },
+  components: {},
 
-  data () {
+  data() {
     return {
       isLoading: false
     }
@@ -68,27 +67,22 @@ export default {
     }
   },
 
-  mounted () {
-  },
+  mounted() {},
 
   computed: {
-    container () {
+    container() {
       return this.$refs.container
     }
   },
 
-  methods: {
-  },
+  methods: {},
 
   watch: {
-    defaultHeight () {
-    },
+    defaultHeight() {},
 
-    previewUrl () {
-    },
+    previewUrl() {},
 
-    light () {
-    }
+    light() {}
   }
 }
 </script>
@@ -101,5 +95,6 @@ export default {
 #model-viewer {
   height: 100%;
   width: 100%;
+  --progress-bar-color: #999;
 }
 </style>

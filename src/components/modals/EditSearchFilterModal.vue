@@ -1,44 +1,46 @@
 <template>
-<div :class="{
-  'modal': true,
-  'is-active': active
-}">
-  <div class="modal-background" @click="$emit('cancel')" ></div>
+  <div
+    :class="{
+      modal: true,
+      'is-active': active
+    }"
+  >
+    <div class="modal-background" @click="$emit('cancel')"></div>
 
-  <div class="modal-content">
-    <div class="box">
-      <h1 class="title">
-        {{ $t("main.search_query_edit") }}
-      </h1>
+    <div class="modal-content">
+      <div class="box">
+        <h1 class="title">
+          {{ $t('main.search_query_edit') }}
+        </h1>
 
-      <form v-on:submit.prevent>
-        <text-field
-          ref="nameField"
-          :label="$t('assets.fields.name')"
-          v-model="form.name"
-          @enter="runConfirmation"
-          v-focus
+        <form v-on:submit.prevent>
+          <text-field
+            ref="nameField"
+            :label="$t('assets.fields.name')"
+            v-model="form.name"
+            @enter="runConfirmation"
+            v-focus
+          />
+
+          <text-field
+            ref="nameField"
+            :label="$t('main.search_query')"
+            v-model="form.search_query"
+            @enter="runConfirmation"
+            v-focus
+          />
+        </form>
+
+        <modal-footer
+          :error-text="$t('main.search_query_edit_error')"
+          :is-error="isError"
+          :is-loading="isLoading"
+          @confirm="runConfirmation"
+          @cancel="$emit('cancel')"
         />
-
-        <text-field
-          ref="nameField"
-          :label="$t('main.search_query')"
-          v-model="form.search_query"
-          @enter="runConfirmation"
-          v-focus
-        />
-      </form>
-
-      <modal-footer
-        :error-text="$t('main.search_query_edit_error')"
-        :is-error="isError"
-        :is-loading="isLoading"
-        @confirm="runConfirmation"
-        @cancel="$emit('cancel')"
-      />
+      </div>
     </div>
   </div>
-</div>
 </template>
 
 <script>
@@ -59,14 +61,26 @@ export default {
     TextField
   },
 
-  props: [
-    'active',
-    'isLoading',
-    'isError',
-    'searchQueryToEdit'
-  ],
+  props: {
+    active: {
+      type: Boolean,
+      default: false
+    },
+    isError: {
+      type: Boolean,
+      default: false
+    },
+    isLoading: {
+      type: Boolean,
+      default: false
+    },
+    searchQueryToEdit: {
+      type: Object,
+      default: () => {}
+    }
+  },
 
-  data () {
+  data() {
     if (this.searchQueryToEdit && this.searchQueryToEdit.id) {
       return {
         form: {
@@ -84,11 +98,10 @@ export default {
     }
   },
 
-  computed: {
-  },
+  computed: {},
 
   methods: {
-    runConfirmation (event) {
+    runConfirmation(event) {
       if (!event || event.keyCode === 13 || !event.keyCode) {
         this.$emit('confirm', {
           id: this.searchQueryToEdit.id,
@@ -99,7 +112,7 @@ export default {
   },
 
   watch: {
-    searchQueryToEdit () {
+    searchQueryToEdit() {
       if (this.searchQueryToEdit && this.searchQueryToEdit.id) {
         this.form.id = this.searchQueryToEdit.id
         this.form.name = this.searchQueryToEdit.name
@@ -113,7 +126,7 @@ export default {
       }
     },
 
-    active () {
+    active() {
       if (this.active) {
         setTimeout(() => {
           this.$refs.nameField.focus()
@@ -124,5 +137,4 @@ export default {
 }
 </script>
 
-<style lang="scss" scoped>
-</style>
+<style lang="scss" scoped></style>

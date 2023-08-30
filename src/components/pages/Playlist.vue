@@ -10,7 +10,6 @@
         }"
         v-scroll="onPlaylistListScroll"
       >
-
         <div class="flexrow top-section">
           <combobox-task-type
             class="flexrow-item selector mb1"
@@ -23,7 +22,7 @@
           <span class="filler" v-if="!isListToggled"></span>
           <button-simple
             class="flexrow-item"
-            style="flex: 0;"
+            style="flex: 0"
             :icon="isListToggled ? 'right' : 'left'"
             is-small
             @click="isListToggled = !isListToggled"
@@ -49,16 +48,15 @@
           }"
           @click="showAddModal"
           key="new-playlist-button"
-          v-if="(isCurrentUserManager || isCurrentUserSupervisor) && !isListToggled"
+          v-if="
+            (isCurrentUserManager || isCurrentUserSupervisor) && !isListToggled
+          "
         >
           <plus-icon class="icon is-small" />
           {{ $t('playlists.new_playlist') }}
         </button>
 
-        <div
-          class="playlists"
-          v-if="!loading.playlists"
-        >
+        <div class="playlists" v-if="!loading.playlists">
           <router-link
             :key="playlist.id"
             :to="getPlaylistPath(playlist.id)"
@@ -71,13 +69,13 @@
             v-for="playlist in playlists"
           >
             <div v-if="!isListToggled">
-            <span>
-              {{ playlist.name }}
-            </span>
-            <span class="playlist-date" title="last modified">
-              {{ $t('playlists.updated_at') }}
-              {{ formatDate(playlist.updated_at) }}
-            </span>
+              <span>
+                {{ playlist.name }}
+              </span>
+              <span class="playlist-date" title="last modified">
+                {{ $t('playlists.updated_at') }}
+                {{ formatDate(playlist.updated_at) }}
+              </span>
             </div>
             <div class="has-text-centered" v-else>
               <light-entity-thumbnail
@@ -94,10 +92,7 @@
             </div>
           </router-link>
         </div>
-        <spinner
-          class="mt2"
-          v-else
-        />
+        <spinner class="mt2" v-else />
         <error-text
           text="$t('playlists.loading_error')"
           v-if="errors.playlistLoading"
@@ -108,62 +103,52 @@
         class="playlist-column no-selection"
         v-if="playlists.length > 0 && !currentPlaylist.id && !loading.playlist"
       >
-        <h2>{{ $t('playlists.last_creation') }}</h2>
-        <div class="flexrow" v-if="!loading.playlists && !loading.playlistsInit">
+        <div
+          class="flexcolumn xyz-in"
+          xyz="fade stagger"
+          v-if="!loading.playlists && !loading.playlistsInit"
+        >
           <router-link
-            class="recent-playlist flexrow-item"
+            class="recent-playlist flexrow-item flexrow"
             :key="'recent-playlist-' + playlist.id"
             :to="getPlaylistPath(playlist.id)"
-            v-for="playlist in lastPlaylistsCreated"
+            v-for="playlist in lastPlaylists"
           >
             <div class="has-text-centered">
               <light-entity-thumbnail
+                class="playlist-thumbnail"
                 :preview-file-id="playlist.first_preview_file_id"
                 type="previews"
                 width="auto"
                 height="auto"
-                max-width="300px"
-                max-height="150px"
-                empty-height="150px"
+                empty-height="252px"
               />
             </div>
-            <h3>{{ playlist.name }}</h3>
-            <span>
-              {{ $t('playlists.created_at') }}
-              {{ formatDate(playlist.created_at) }}
-            </span>
-          </router-link>
-        </div>
-        <spinner class="mt2" v-else />
-
-        <h2>{{ $t('playlists.last_modification') }}</h2>
-        <div class="flexrow" v-if="!loading.playlists">
-          <router-link
-            class="recent-playlist flexrow-item"
-            :key="'recent-modified-playlist-' + playlist.id"
-            :to="getPlaylistPath(playlist.id)"
-            v-for="playlist in lastPlaylistsUpdated"
-          >
-            <div class="has-text-centered">
-              <light-entity-thumbnail
-                :preview-file-id="playlist.first_preview_file_id"
-                type="previews"
-                width="auto"
-                height="auto"
-                max-width="300px"
-                max-height="150px"
-                empty-height="150px"
-              />
+            <div class="playlist-infos flexrow">
+              <div>
+                <h3>{{ playlist.name }}</h3>
+                <span v-if="currentSort === 'created_at'">
+                  {{ $t('playlists.created_at') }}
+                  {{ formatDate(playlist.created_at) }}
+                </span>
+                <span v-else>
+                  {{ $t('playlists.updated_at') }}
+                  {{ formatDate(playlist.updated_at) }}
+                </span>
+              </div>
+              <span class="filler"> </span>
+              <div>
+                <task-type-name
+                  :task-type="taskTypeMap.get(playlist.task_type_id)"
+                  v-if="playlist.task_type_id"
+                />
+              </div>
             </div>
-            <h3>{{ playlist.name }}</h3>
-            <span>
-              {{ $t('playlists.updated_at') }}
-              {{ formatDate(playlist.updated_at) }}
-            </span>
           </router-link>
         </div>
         <spinner class="mt2" v-else />
       </div>
+
       <div
         class="playlist-column no-selection has-text-centered"
         v-else-if="playlists.length === 0"
@@ -195,7 +180,7 @@
           :entities="currentEntities"
           :is-loading="loading.playlist"
           :is-adding-entity="isAddingEntity"
-          :is-asset-playlist="isAssetPlaylist"
+          :current-entity-type="currentEntityType"
           @edit-clicked="showEditModal"
           @show-add-entities="toggleAddEntities"
           @preview-changed="onPreviewChanged"
@@ -209,19 +194,17 @@
         />
 
         <div
-          v-if="(isCurrentUserManager || isCurrentUserSupervisor) && isAddingEntity && !loading.playlist"
+          v-if="
+            (isCurrentUserManager || isCurrentUserSupervisor) &&
+            isAddingEntity &&
+            !loading.playlist
+          "
         >
           <div class="addition-header">
             <div class="flexrow">
-              <page-subtitle
-                class="flexrow-item"
-                :text="addEntitiesText"
-              />
+              <page-subtitle class="flexrow-item" :text="addEntitiesText" />
               <span class="filler"></span>
-              <a
-                class="close-button"
-                @click="toggleAddEntities"
-              >
+              <a class="close-button" @click="toggleAddEntities">
                 <x-icon />
               </a>
             </div>
@@ -231,7 +214,9 @@
                 ref="search-field"
                 :can-save="false"
                 @change="onSearchChange"
-                :placeholder="isAssetPlaylist ? 'chars mode=wfa' : 'ex: seq01 anim=wfa'"
+                :placeholder="
+                  isAssetPlaylist ? 'chars mode=wfa' : 'ex: seq01 anim=wfa'
+                "
               />
               <button-simple
                 class="flexrow-item"
@@ -272,7 +257,7 @@
                 }"
                 :disabled="isAdditionLoading"
                 @click="addEpisodePending"
-                v-if="isTVShow && !isAssetPlaylist"
+                v-if="isTVShow && !isAssetPlaylist && !isSequencePlaylist"
               >
                 {{ $t('playlists.add_episode') }}
               </button>
@@ -294,7 +279,9 @@
 
         <div
           class="addition-section"
-          v-if="(isCurrentUserManager || isCurrentUserSupervisor) && isAddingEntity"
+          v-if="
+            (isCurrentUserManager || isCurrentUserSupervisor) && isAddingEntity
+          "
           v-scroll="onBodyScroll"
         >
           <spinner
@@ -302,38 +289,66 @@
             key="entity-loader"
             v-if="isShotsLoading || isAssetsLoading"
           />
-          <div
-            ref="entityListContent"
-            v-else
-          >
+          <div ref="entityListContent" v-else>
             <div v-if="isAssetPlaylist">
               <div
                 :key="'asset-type-' + i"
                 v-for="(typeAssets, i) in displayedAssetsByType"
               >
-                <h2
-                  class="entity-group-title"
-                  v-if="typeAssets.length > 0"
-                >
+                <h2 class="entity-group-title" v-if="typeAssets.length > 0">
                   {{ typeAssets[0].asset_type_name }}
                 </h2>
-                <div
-                 class="addition-entities"
-                >
+                <div class="addition-entities">
                   <div
                     :class="{
-                      'addition-shot': true
+                      'addition-shot': true,
+                      playlisted: currentEntities[asset.id] !== undefined
                     }"
                     :key="asset.id"
                     @click.prevent="addEntityToPlaylist(asset)"
                     v-for="asset in typeAssets.filter(a => !a.canceled)"
                   >
-                      <light-entity-thumbnail
-                        :preview-file-id="asset.preview_file_id"
-                        width="150px"
-                        height="100px"
-                      />
+                    <light-entity-thumbnail
+                      :preview-file-id="asset.preview_file_id"
+                      width="150px"
+                      height="100px"
+                    />
                     <span class="playlisted-shot-name">{{ asset.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else-if="isSequencePlaylist">
+              <div class="addition-entities">
+                <div
+                  :class="{
+                    'addition-shot': true,
+                    playlisted: currentEntities[sequence.id] !== undefined
+                  }"
+                  :key="sequence.id"
+                  @click.prevent="addEntityToPlaylist(sequence)"
+                  v-for="sequence in displayedSequences.filter(
+                    s => !s.canceled
+                  )"
+                >
+                  <light-entity-thumbnail
+                    :preview-file-id="sequence.preview_file_id"
+                    width="150px"
+                    height="100px"
+                  />
+                  <div>
+                    <span
+                      :title="getTaskStatus(sequence).name"
+                      :style="{
+                        color: getTaskStatus(sequence).color
+                      }"
+                      v-if="currentPlaylist.task_type_id"
+                    >
+                      &bullet;
+                    </span>
+                    <span class="playlisted-shot-name">{{
+                      sequence.name
+                    }}</span>
                   </div>
                 </div>
               </div>
@@ -343,23 +358,18 @@
                 :key="'sequence-' + i"
                 v-for="(sequenceShots, i) in displayedShotsBySequence"
               >
-                <h2
-                  class="entity-group-title"
-                  v-if="sequenceShots.length > 0"
-                >
+                <h2 class="entity-group-title" v-if="sequenceShots.length > 0">
                   {{ sequenceShots[0].sequence_name }}
                   <button
                     class="button"
                     @click="addSequence(sequenceShots)"
                     :key="'add-sequence-button-' + sequenceShots[0].sequence_id"
-                    v-if="(isCurrentUserManager || isCurrentUserSupervisor)"
+                    v-if="isCurrentUserManager || isCurrentUserSupervisor"
                   >
                     {{ $t('playlists.add_sequence') }}
                   </button>
                 </h2>
-                <div
-                 class="addition-entities"
-                >
+                <div class="addition-entities">
                   <div
                     :class="{
                       'addition-shot': true,
@@ -409,13 +419,14 @@
     <build-filter-modal
       ref="build-filter-modal"
       :active="modals.isBuildFilterDisplayed"
-      :entity-type="isAssetPlaylist ? 'asset' : 'shot'"
+      :entity-type="currentEntityType"
       @confirm="confirmBuildFilter"
       @cancel="modals.isBuildFilterDisplayed = false"
     />
   </div>
 </template>
 <script>
+import Vue from 'vue/dist/vue'
 import firstBy from 'thenby'
 import moment from 'moment-timezone'
 import { mapGetters, mapActions } from 'vuex'
@@ -424,10 +435,7 @@ import { PlusIcon, XIcon } from 'vue-feather-icons'
 import { DEFAULT_NB_FRAMES_PICTURE } from '@/lib/playlist'
 import { formatDate } from '@/lib/time'
 import { getPlaylistPath } from '@/lib/path'
-import {
-  updateModelFromList,
-  removeModelFromList
-} from '@/lib/models'
+import { updateModelFromList, removeModelFromList } from '@/lib/models'
 import { sortShots } from '@/lib/sorting'
 
 import ButtonSimple from '@/components/widgets/ButtonSimple'
@@ -441,6 +449,7 @@ import PageSubtitle from '@/components/widgets/PageSubtitle'
 import PlaylistPlayer from '@/components/pages/playlists/PlaylistPlayer'
 import SearchField from '@/components/widgets/SearchField'
 import Spinner from '@/components/widgets/Spinner'
+import TaskTypeName from '@/components/widgets/TaskTypeName'
 
 export default {
   name: 'productions',
@@ -458,10 +467,11 @@ export default {
     PlusIcon,
     SearchField,
     Spinner,
+    TaskTypeName,
     XIcon
   },
 
-  data () {
+  data() {
     return {
       currentPlaylist: { name: '' },
       currentSort: 'updated_at',
@@ -471,11 +481,10 @@ export default {
       page: 1,
       taskTypeId: '',
       sortedPlaylists: [],
-      sortOptions: [
-        'updated_at',
-        'created_at',
-        'name'
-      ].map(name => ({ label: name, value: name })),
+      sortOptions: ['updated_at', 'created_at', 'name'].map(name => ({
+        label: name,
+        value: name
+      })),
       playlistToEdit: {
         name: `${moment().format('YYYY-MM-DD HH:mm:ss')}`,
         for_client: false
@@ -517,6 +526,7 @@ export default {
       'currentProduction',
       'displayedAssets',
       'displayedAssetsByType',
+      'displayedSequences',
       'displayedShots',
       'displayedShotsBySequence',
       'isAssetsLoading',
@@ -528,6 +538,7 @@ export default {
       'playlistMap',
       'playlists',
       'playlistsPath',
+      'sequenceMap',
       'shotsByEpisode',
       'shotSearchText',
       'shotMap',
@@ -536,7 +547,7 @@ export default {
       'taskTypeMap'
     ]),
 
-    isAdditionLoading () {
+    isAdditionLoading() {
       return (
         this.loading.addSequence ||
         this.loading.addWeekly ||
@@ -545,68 +556,75 @@ export default {
       )
     },
 
-    isAssetPlaylist () {
+    isAssetPlaylist() {
       return this.currentPlaylist.for_entity === 'asset'
     },
 
-    isAddSearchVisible () {
+    isSequencePlaylist() {
+      return this.currentPlaylist.for_entity === 'sequence'
+    },
+
+    currentEntityType() {
+      return this.currentPlaylist.for_entity
+    },
+
+    isAddSearchVisible() {
       return (
         (this.isAssetPlaylist && this.assetSearchText) ||
         (!this.isAssetPlaylist && this.shotSearchText)
       )
     },
 
-    lastPlaylistsUpdated () {
+    lastPlaylists() {
       return this.playlists
-        .concat()
-        .sort(firstBy('updated_at'))
-        .reverse()
-        .slice(0, 3)
     },
 
-    lastPlaylistsCreated () {
-      return this.playlists.slice(0, 3)
-    },
-
-    playlistPlayer () {
+    playlistPlayer() {
       return this.$refs['playlist-player']
     },
 
-    addEntitiesText () {
+    addEntitiesText() {
       if (this.isAssetPlaylist) {
         return this.$t('playlists.add_assets')
+      } else if (this.isSequencePlaylist) {
+        return this.$t('playlists.add_sequences')
       } else {
         return this.$t('playlists.add_shots')
       }
     },
 
-    tvShowPageTitle () {
-      const productionName =
-        this.currentProduction ? this.currentProduction.name : ''
+    tvShowPageTitle() {
+      const productionName = this.currentProduction
+        ? this.currentProduction.name
+        : ''
       let episodeName = ''
       if (this.currentEpisode) {
         episodeName = this.currentEpisode.name
         if (this.currentEpisode.id === 'all') episodeName = this.$t('main.all')
         if (this.currentEpisode.id === 'main') episodeName = 'Main Pack'
       }
-      return `${productionName} - ${episodeName}` +
-             ` | ${this.$t('playlists.title')} - Kitsu`
+      return (
+        `${productionName} - ${episodeName}` +
+        ` | ${this.$t('playlists.title')} - Kitsu`
+      )
     },
 
-    shortPageTitle () {
-      const productionName =
-        this.currentProduction ? this.currentProduction.name : ''
+    shortPageTitle() {
+      const productionName = this.currentProduction
+        ? this.currentProduction.name
+        : ''
       return `${productionName} ${this.$t('playlists.title')} - Kitsu`
     },
 
-    taskTypeList () {
-      return [{
-        id: '',
-        color: '#999',
-        name: this.$t('news.all')
-      }].concat([...this.productionTaskTypes])
+    taskTypeList() {
+      return [
+        {
+          id: '',
+          color: '#999',
+          name: this.$t('news.all')
+        }
+      ].concat([...this.productionTaskTypes])
     }
-
   },
 
   methods: {
@@ -631,19 +649,21 @@ export default {
       'refreshPlaylist',
       'removeEntityPreviewFromPlaylist',
       'removeBuildJobFromList',
+      'resetSequences',
       'setAssetSearch',
       'setCurrentEpisode',
+      'setSequenceSearch',
       'setShotSearch',
       'updatePreviewAnnotation'
     ]),
 
     // Helpers
 
-    formatDate (dateString) {
+    formatDate(dateString) {
       return formatDate(dateString)
     },
 
-    getPlaylistPath (playlistId, section) {
+    getPlaylistPath(playlistId, section) {
       return getPlaylistPath(
         this.currentProduction.id,
         this.currentEpisode ? this.currentEpisode.id : null,
@@ -652,7 +672,7 @@ export default {
       )
     },
 
-    playlistElementStyle (playlist) {
+    playlistElementStyle(playlist) {
       const taskType = this.taskTypeMap.get(playlist.task_type_id)
       const color = taskType ? taskType.color : 'transparent'
       return {
@@ -660,7 +680,7 @@ export default {
       }
     },
 
-    getTaskStatus (entity) {
+    getTaskStatus(entity) {
       entity = this.shotMap.get(entity.id)
       if (!entity) entity = this.assetMap.get(entity.id)
       if (!entity) return {}
@@ -678,19 +698,19 @@ export default {
 
     // Data loading
 
-    loadShotsData (callback) {
+    loadShotsData(callback) {
       if (
         this.displayedShots.length === 0 ||
         this.displayedShots[0].project_id !== this.currentProduction.id ||
-        (
-          this.currentEpisode &&
-          this.displayedShots[0].episode_id !== this.currentEpisode.id
-        )
+        (this.currentEpisode &&
+          this.displayedShots[0].episode_id !== this.currentEpisode.id)
       ) {
-        if (this.isTVShow &&
-            this.currentEpisode &&
-            (this.currentEpisode.id === 'main' ||
-            this.currentEpisode.id === 'all')) {
+        if (
+          this.isTVShow &&
+          this.currentEpisode &&
+          (this.currentEpisode.id === 'main' ||
+            this.currentEpisode.id === 'all')
+        ) {
           callback()
         } else {
           this.loadShots(callback)
@@ -700,7 +720,7 @@ export default {
       }
     },
 
-    loadAssetsData () {
+    loadAssetsData() {
       if (this.isTVShow || this.displayedAssets.length === 0) {
         return this.loadAssets()
       } else {
@@ -708,7 +728,7 @@ export default {
       }
     },
 
-    loadPlaylistsData (force = false) {
+    loadPlaylistsData(force = false) {
       const setFirstPlaylist = () => {
         this.setCurrentPlaylist(() => {
           if (!this.currentPlaylist || !this.currentPlaylist.id) {
@@ -736,11 +756,11 @@ export default {
       }
     },
 
-    onPlaylistListScroll (event, position) {
+    onPlaylistListScroll(event, position) {
       if (this.$options.silentMore) return
       const listEl = this.$refs.playlistList
       const maxHeight = listEl.scrollHeight - listEl.offsetHeight
-      if (maxHeight < (position.scrollTop + 20)) {
+      if (maxHeight < position.scrollTop + 20) {
         this.$options.silentMore = true
         this.page++
         this.loadMorePlaylists({
@@ -764,7 +784,7 @@ export default {
 
     // Playlist build
 
-    rebuildCurrentEntities () {
+    rebuildCurrentEntities() {
       this.currentEntities = {}
       const tmpEntities = {}
       this.previewFileMap = new Map()
@@ -778,8 +798,9 @@ export default {
               entity.preview_file_id,
               playlistEntity
             )
-            const previewFileGroups =
-              Object.values(playlistEntity.preview_files)
+            const previewFileGroups = Object.values(
+              playlistEntity.preview_files
+            )
             previewFileGroups.forEach(previewFiles => {
               previewFiles.forEach(previewFile => {
                 this.previewFileMap.set(previewFile.id, previewFile)
@@ -793,7 +814,7 @@ export default {
       })
     },
 
-    onAnnotationsRefreshed (preview) {
+    onAnnotationsRefreshed(preview) {
       const entity = this.previewFileEntityMap.get(preview.id)
       const localPreview = this.previewFileMap.get(preview.id)
       if (entity) {
@@ -804,10 +825,15 @@ export default {
       }
     },
 
-    convertEntityToPlaylistFormat (entityInfo) {
+    convertEntityToPlaylistFormat(entityInfo) {
       let entity
       if (this.isAssetPlaylist) {
         entity = this.assetMap.get(entityInfo.id)
+      } else if (this.isSequencePlaylist) {
+        entity = this.sequenceMap.get(entityInfo.id)
+        if (this.currentEpisode) {
+          entity.episode_name = this.currentEpisode.name
+        }
       } else {
         entity = this.shotMap.get(entityInfo.id)
       }
@@ -815,14 +841,14 @@ export default {
         const playlistEntity = {
           id: entityInfo.id,
           name: entity.name,
-          parent_name: entity.sequence_name || entity.asset_type_name,
+          parent_name:
+            entity.sequence_name ||
+            entity.episode_name ||
+            entity.asset_type_name,
           preview_files: entityInfo.preview_files,
-          preview_file_id:
-            entityInfo.preview_file_id ||
-            entity.preview_file_id,
+          preview_file_id: entityInfo.preview_file_id || entity.preview_file_id,
           preview_file_extension:
-            entityInfo.preview_file_extension ||
-            entity.preview_file_extension,
+            entityInfo.preview_file_extension || entity.preview_file_extension,
           preview_file_task_id:
             entityInfo.task_id ||
             entityInfo.preview_file_task_id ||
@@ -831,10 +857,11 @@ export default {
             entityInfo.preview_file_annotations ||
             entity.preview_file_annotations,
           preview_file_previews:
-            entityInfo.preview_file_previews ||
-            entity.preview_file_previews,
-          preview_nb_frames: entityInfo.nb_frames ||
-            entity.nb_frames || DEFAULT_NB_FRAMES_PICTURE
+            entityInfo.preview_file_previews || entity.preview_file_previews,
+          preview_nb_frames:
+            entityInfo.nb_frames ||
+            entity.nb_frames ||
+            DEFAULT_NB_FRAMES_PICTURE
         }
         this.previewFileEntityMap.set(
           playlistEntity.preview_file_id,
@@ -850,7 +877,7 @@ export default {
       }
     },
 
-    setCurrentPlaylist (callback) {
+    setCurrentPlaylist(callback) {
       const playlistId = this.$route.params.playlist_id
       const playlist = this.playlistMap.get(playlistId)
       if (playlist) {
@@ -873,16 +900,16 @@ export default {
       }
     },
 
-    addEntity (entity) {
+    addEntity(entity) {
       return this.loadEntityPreviewFiles(entity)
         .then(previewFiles => {
           return this.addToStorePlaylistAndSave(previewFiles, entity)
         })
         .then(this.addToPlayerPlaylist)
-        .catch((err) => console.error(err))
+        .catch(err => console.error(err))
     },
 
-    addToStorePlaylistAndSave (previewFiles, entity) {
+    addToStorePlaylistAndSave(previewFiles, entity) {
       return this.pushEntityToPlaylist({
         playlist: this.currentPlaylist,
         previewFiles: previewFiles,
@@ -890,23 +917,22 @@ export default {
       })
     },
 
-    addToPlayerPlaylist (entity) {
+    addToPlayerPlaylist(entity) {
       const playlistEntity = this.convertEntityToPlaylistFormat(entity)
-      this.currentEntities[playlistEntity.id] = playlistEntity
+      Vue.set(this.currentEntities, playlistEntity.id, playlistEntity)
       this.playlistPlayer.entityList.push(playlistEntity)
       this.$nextTick(() => {
         this.playlistPlayer.scrollToRight()
       })
     },
 
-    addEntityToPlaylist (entity) {
+    addEntityToPlaylist(entity) {
       if (!this.currentEntities[entity.id]) {
-        this.addEntity(entity)
-          .then(this.playlistPlayer.scrollToRight())
+        this.addEntity(entity).then(this.playlistPlayer.scrollToRight())
       }
     },
 
-    removeEntity (entity) {
+    removeEntity(entity) {
       this.removeEntityPreviewFromPlaylist({
         playlist: this.currentPlaylist,
         entity,
@@ -916,28 +942,29 @@ export default {
       })
     },
 
-    clearCurrentPlaylist () {
+    clearCurrentPlaylist() {
       this.currentPlaylist = {}
       this.currentShots = {}
     },
 
-    resetPlaylist () {
+    resetPlaylist() {
       this.clearCurrentPlaylist()
       this.setCurrentPlaylist()
     },
 
     // Addition Helpers
 
-    addCurrentSelection () {
+    addCurrentSelection() {
       this.$options.silent = true
-      const entities =
-        this.isAssetPlaylist ? this.displayedAssets : this.displayedShots
+      const entities = this.isAssetPlaylist
+        ? this.displayedAssets
+        : this.displayedShots
       this.addEntities([...entities].reverse(), () => {
         this.$options.silent = false
       })
     },
 
-    addSequence (sequenceShots) {
+    addSequence(sequenceShots) {
       if (sequenceShots.length > 0) {
         const sequenceId = sequenceShots[0].sequence_id
         const shots = Array.from(this.shotMap.values())
@@ -951,31 +978,29 @@ export default {
       }
     },
 
-    addAllPending () {
+    addAllPending() {
       this.$options.silent = true
       this.loading.addWeekly = true
-      this.getPending(false)
-        .then((shots) => {
-          this.addEntities(shots.reverse(), () => {
-            this.loading.addWeekly = false
-            this.$options.silent = false
-          })
+      this.getPending(false).then(shots => {
+        this.addEntities(shots.reverse(), () => {
+          this.loading.addWeekly = false
+          this.$options.silent = false
         })
+      })
     },
 
-    addDailyPending () {
+    addDailyPending() {
       this.loading.addDaily = true
       this.$options.silent = true
-      this.getPending(true)
-        .then((shots) => {
-          this.addEntities(sortShots(shots).reverse(), () => {
-            this.loading.addDaily = false
-            this.$options.silent = false
-          })
+      this.getPending(true).then(shots => {
+        this.addEntities(sortShots(shots).reverse(), () => {
+          this.loading.addDaily = false
+          this.$options.silent = false
         })
+      })
     },
 
-    addEpisodePending () {
+    addEpisodePending() {
       this.loading.addEpisode = true
       this.$options.silent = true
       let shots = [].concat(...this.shotsByEpisode)
@@ -986,7 +1011,7 @@ export default {
       })
     },
 
-    addMovie () {
+    addMovie() {
       this.loading.addMovie = true
       this.$options.silent = true
       const shots = sortShots(Array.from(this.shotMap.values()))
@@ -996,13 +1021,12 @@ export default {
       })
     },
 
-    addEntities (entities, callback) {
+    addEntities(entities, callback) {
       if (entities && entities.length > 0) {
         const entity = entities.pop()
-        this.addEntity(entity)
-          .then(() => {
-            this.addEntities(entities, callback)
-          })
+        this.addEntity(entity).then(() => {
+          this.addEntities(entities, callback)
+        })
       } else {
         callback()
       }
@@ -1011,7 +1035,7 @@ export default {
     // Save data
 
     /* When a preview is modified, the change is persisted */
-    onPreviewChanged (entity, previewFileId) {
+    onPreviewChanged(entity, previewFileId) {
       this.changePlaylistPreview({
         playlist: this.currentPlaylist,
         entity,
@@ -1019,33 +1043,40 @@ export default {
       })
     },
 
-    onOrderChange (info) {
+    onOrderChange(info) {
       this.changePlaylistOrder({
         playlist: this.currentPlaylist,
         info
       })
     },
 
-    onAnnotationChanged ({ preview, additions, deletions, updates }) {
+    onAnnotationChanged({ preview, additions, deletions, updates }) {
       const taskId = preview.task_id
       this.updatePreviewAnnotation({
-        taskId, preview, additions, deletions, updates
+        taskId,
+        preview,
+        additions,
+        deletions,
+        updates
       })
     },
 
     // Search
 
-    confirmBuildFilter (query) {
+    confirmBuildFilter(query) {
       this.modals.isBuildFilterDisplayed = false
       this.$refs['search-field'].setValue(query)
       this.onSearchChange(query)
     },
 
-    onSearchChange (searchQuery) {
+    onSearchChange(searchQuery) {
       if (searchQuery.length > 1) {
         if (this.isAssetPlaylist) {
           this.setAssetSearch(searchQuery)
           this.displayMoreAssets()
+        } else if (this.isSequencePlaylist) {
+          this.setSequenceSearch(searchQuery)
+          this.resetSequences()
         } else {
           this.setShotSearch(searchQuery)
           this.displayMoreShots()
@@ -1053,6 +1084,8 @@ export default {
       } else {
         if (this.isAssetPlaylist) {
           this.setAssetSearch('')
+        } else if (this.isSequencePlaylist) {
+          this.setSequenceSearch('')
         } else {
           this.setShotSearch('')
         }
@@ -1061,7 +1094,7 @@ export default {
 
     // Playlist list
 
-    onForClientChanged (forClient) {
+    onForClientChanged(forClient) {
       this.editPlaylist({
         data: {
           id: this.currentPlaylist.id,
@@ -1070,7 +1103,7 @@ export default {
       })
     },
 
-    runAddPlaylist (form) {
+    runAddPlaylist(form) {
       const newPlaylist = {
         name: form.name,
         production_id: this.currentProduction.id,
@@ -1085,19 +1118,19 @@ export default {
       this.loading.editPlaylist = true
       this.errors.editPlaylist = false
       this.newPlaylist(newPlaylist)
-        .then((playlist) => {
+        .then(playlist => {
           this.$router.push(this.getPlaylistPath(playlist.id))
           this.loading.editPlaylist = false
           this.modals.isEditDisplayed = false
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err)
           this.errors.editPlaylist = true
           this.loading.editPlaylist = false
         })
     },
 
-    confirmEditPlaylist (form) {
+    confirmEditPlaylist(form) {
       if (this.playlistToEdit.id) {
         form.id = this.currentPlaylist.id
         this.runEditPlaylist(form)
@@ -1106,7 +1139,7 @@ export default {
       }
     },
 
-    runEditPlaylist (form) {
+    runEditPlaylist(form) {
       this.loading.editPlaylist = true
       this.errors.editPlaylist = false
       this.editPlaylist({
@@ -1126,7 +1159,7 @@ export default {
       })
     },
 
-    goFirstPlaylist () {
+    goFirstPlaylist() {
       if (this.playlists.length > 0) {
         this.$router.push({
           name: 'playlist',
@@ -1142,14 +1175,14 @@ export default {
 
     // Changes
 
-    toggleAddEntities () {
+    toggleAddEntities() {
       if (this.isAddingEntity) {
         this.resetPlaylist()
       }
       this.isAddingEntity = !this.isAddingEntity
     },
 
-    onTaskTypeChanged (taskTypeId) {
+    onTaskTypeChanged(taskTypeId) {
       this.changePlaylistType({
         playlist: this.currentPlaylist,
         taskTypeId,
@@ -1159,7 +1192,7 @@ export default {
       })
     },
 
-    onBodyScroll (event, position) {
+    onBodyScroll(event, position) {
       const maxHeight =
         this.$refs.entityListContent.scrollHeight -
         this.$refs.entityListContent.offsetHeight
@@ -1172,21 +1205,19 @@ export default {
       }
     },
 
-    resetSorting () {
+    resetSorting() {
       let order = 1
       if (['created_at', 'updated_at'].includes(this.currentSort)) {
         order = -1
       }
-      this.sortedPlaylists = [...this.playlists]
-        .sort(
-          firstBy(this.currentSort, order)
-            .thenBy('name')
-        )
+      this.sortedPlaylists = [...this.playlists].sort(
+        firstBy(this.currentSort, order).thenBy('name')
+      )
     },
 
     // Modals
 
-    showAddModal () {
+    showAddModal() {
       this.playlistToEdit = {
         name: `${moment().format('YYYY-MM-DD HH:mm:ss')}`,
         for_client: false
@@ -1195,12 +1226,12 @@ export default {
       this.modals.isEditDisplayed = true
     },
 
-    showEditModal () {
+    showEditModal() {
       this.playlistToEdit = this.currentPlaylist
       this.modals.isEditDisplayed = true
     },
 
-    hideEditModal () {
+    hideEditModal() {
       this.playlistToEdit = {
         name: `${moment().format('YYYY-MM-DD HH:mm:ss')}`,
         for_client: false
@@ -1210,7 +1241,7 @@ export default {
 
     // Loading
 
-    reloadAll () {
+    reloadAll() {
       if (!this.loading.playlists) {
         this.loading.playlists = true
         this.loadShotsData(() => {
@@ -1231,7 +1262,7 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     // Next tick needed to ensure that current production is properly set.
     this.$nextTick(() => {
       this.reloadAll()
@@ -1243,11 +1274,11 @@ export default {
   },
 
   watch: {
-    $route () {
+    $route() {
       this.setCurrentPlaylist()
     },
 
-    currentPlaylist () {
+    currentPlaylist() {
       if (this.currentPlaylist.shots) {
         this.$options.silentMore = false
         this.isAddingEntity =
@@ -1257,69 +1288,68 @@ export default {
       }
     },
 
-    currentProduction () {
+    currentProduction() {
       this.$store.commit('LOAD_PLAYLISTS_END', [])
       this.reloadAll()
     },
 
-    currentEpisode () {
+    currentEpisode() {
       this.$store.commit('LOAD_PLAYLISTS_END', [])
       if (this.currentEpisode) {
         this.reloadAll()
       }
     },
 
-    playlists () {
-    },
+    playlists() {},
 
-    currentSort () {
+    currentSort() {
       localStorage.setItem('playlist-sort', this.currentSort)
       this.loading.playlists = true
       this.page = 1
-      this.loadPlaylistsData(true)
-        .then(() => {
-          this.loading.playlists = false
-        })
+      this.loadPlaylistsData(true).then(() => {
+        this.loading.playlists = false
+      })
     },
 
-    isListToggled () {
+    isListToggled() {
       this.playlistPlayer.onWindowResize()
     },
 
-    taskTypeId () {
+    taskTypeId() {
       this.loadPlaylistsData(true)
     }
   },
 
   socket: {
     events: {
-      'playlist:new' (eventData) {
+      'playlist:new'(eventData) {
         if (!this.playlistMap.get(eventData.playlist_id)) {
           this.refreshPlaylist(eventData.playlist_id)
         }
       },
 
-      'playlist:update' (eventData) {
-      },
+      'playlist:update'(eventData) {},
 
-      'playlist:delete' (eventData) {
+      'playlist:delete'(eventData) {
         this.$store.commit('DELETE_PLAYLIST_END', {
           id: eventData.playlist_id
         })
       },
 
-      'build-job:new' (eventData) {
+      'build-job:new'(eventData) {
         if (eventData.playlist_id === this.currentPlaylist.id) {
-          this.currentPlaylist.build_jobs = [{
-            id: eventData.build_job_id,
-            created_at: eventData.created_at,
-            status: 'running',
-            playlist_id: this.currentPlaylist.id
-          }].concat(this.currentPlaylist.build_jobs)
+          this.currentPlaylist.build_jobs = [
+            {
+              id: eventData.build_job_id,
+              created_at: eventData.created_at,
+              status: 'running',
+              playlist_id: this.currentPlaylist.id
+            }
+          ].concat(this.currentPlaylist.build_jobs)
         }
       },
 
-      'build-job:update' (eventData) {
+      'build-job:update'(eventData) {
         if (eventData.playlist_id === this.currentPlaylist.id) {
           updateModelFromList(this.currentPlaylist.build_jobs, {
             id: eventData.build_job_id,
@@ -1328,18 +1358,20 @@ export default {
         }
       },
 
-      'build-job:delete' (eventData) {
+      'build-job:delete'(eventData) {
         if (eventData.playlist_id === this.currentPlaylist.id) {
-          this.currentPlaylist.build_jobs =
-            removeModelFromList(this.currentPlaylist.build_jobs, {
+          this.currentPlaylist.build_jobs = removeModelFromList(
+            this.currentPlaylist.build_jobs,
+            {
               id: eventData.build_job_id
-            })
+            }
+          )
         }
       }
     }
   },
 
-  metaInfo () {
+  metaInfo() {
     if (this.isTVShow) {
       return { title: this.tvShowPageTitle }
     } else {
@@ -1356,11 +1388,6 @@ export default {
     box-shadow: 0px 0px 6px #333;
     border-color: $dark-grey;
     color: $white-grey;
-
-    &.for-client {
-      background: $purple-grey;
-      border: 1px solid $dark-grey;
-    }
 
     &.selected {
       border-right: 3px solid $dark-green;
@@ -1388,9 +1415,14 @@ export default {
     }
 
     .recent-playlist {
+      position: relative;
+      max-width: 800px;
+      margin: auto;
+      overflow: hidden;
       background: $dark-grey-lightmore;
       border: 2px solid $dark-grey;
       box-shadow: 0px 0px 6px #333;
+      margin-bottom: 1em;
 
       h3 {
         color: white;
@@ -1419,26 +1451,32 @@ export default {
 
 .playlist-list-column {
   max-width: 300px;
-  background: #F4F5F9;
+  background: #f4f5f9;
   overflow-y: auto;
   padding: 1em 1em 1em 2em;
-  border-right: 1px solid #DDD;
-  box-shadow: 0px 0px 6px #F0F0F0;
+  border-right: 1px solid #ddd;
+  box-shadow: 0px 0px 6px #f0f0f0;
   z-index: 201;
 }
 
 .playlist-item {
   display: block;
   background: white;
-  padding: 0.4em;
-  margin: 0.2em;
   border: 1px solid $white-grey;
-  box-shadow: 0px 0px 6px #DDD;
+  border-radius: 3px;
+  box-shadow: 0px 0px 6px #ddd;
   color: $grey-strong;
+  margin: 0.2em;
+  padding: 0.4em;
+  transition: all 0.2s ease;
 
   &.for-client {
-    background: $light-purple;
-    border: 1px solid $purple;
+    background: $purple-grey;
+  }
+
+  &:hover {
+    transform: scale(1.03);
+    border-right: 2px solid $dark-purple;
   }
 }
 
@@ -1475,7 +1513,7 @@ export default {
   }
 
   &:hover {
-    opacity: 0.75
+    opacity: 0.75;
   }
 
   &.playlisted {
@@ -1484,21 +1522,14 @@ export default {
     img,
     span.thumbnail-picture {
       border: 2px solid $purple;
+      border-radius: 5px;
     }
   }
 }
 
 span.thumbnail-picture {
-  box-shadow: 0px 0px 6px #DDD;
+  box-shadow: 0px 0px 6px #ddd;
   margin-bottom: 2px;
-}
-
-.addition-header {
-  padding: 0 1em;
-
-  .subtitle {
-    margin-top: 1em;
-  }
 }
 
 .add-sequence {
@@ -1506,7 +1537,6 @@ span.thumbnail-picture {
 }
 
 .playlist-column {
-  padding: 0;
   overflow: hidden;
   flex: 1;
   background: $dark-grey-2;
@@ -1539,7 +1569,13 @@ span.thumbnail-picture {
 
 .addition-header {
   background: var(--background);
+  border-top: 3px solid $dark-grey;
   height: 110px;
+  padding: 0 1em;
+
+  .subtitle {
+    margin-top: 1em;
+  }
 }
 
 .addition-section {
@@ -1572,26 +1608,54 @@ h2 {
 .playlist-column.no-selection {
   padding: 2em;
   overflow: auto;
-  background: #F4F5F9;
+  background: #f4f5f9;
 
   h2 {
     font-size: 2em;
     margin-top: 1.5em;
     margin-bottom: 0.3em;
+    border-bottom: 0;
+
+    &:first-child {
+      margin-top: 0.5em;
+    }
   }
 
   .recent-playlist {
-    width: 333px;
-    height: 250px;
+    height: 320px;
     background: white;
     border: 2px solid $light-grey-light;
-    box-shadow: 0px 0px 6px #DDD;
+    box-shadow: 0px 0px 6px #ddd;
     border-radius: 1em;
-    padding: 1em;
+    padding: 0;
+    width: 100%;
+    transition: all 0.6s ease;
+
+    img {
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+    }
+
+    &:hover {
+      transform: scale(1.03);
+      border: 2px solid $dark-purple;
+    }
+
+    .playlist-infos {
+      background-color: rgb(0, 0, 0, 0.2);
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      align-items: middle;
+      padding: 0.3em 1.2em;
+      height: 65px;
+      padding-top: 0.3em;
+    }
 
     h3 {
       color: $grey-strong;
-      font-size: 1.2em;
+      font-size: 1.4em;
       font-weight: bold;
     }
     span {

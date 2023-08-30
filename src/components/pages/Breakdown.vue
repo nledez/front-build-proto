@@ -1,14 +1,12 @@
 <template>
   <div class="breakdown page">
     <div class="breakdown-columns">
-
       <div class="breakdown-column casting-column">
         <div class="flexrow mb1">
-          <div
-            class=""
-            v-if="isEpisodeCasting"
-          >
-            <h2 class="subtitle mt05">Episode Casting</h2>
+          <div v-if="isEpisodeCasting">
+            <h2 class="subtitle mt05">
+              {{ $t('breakdown.episode_casting') }}
+            </h2>
           </div>
           <combobox-styled
             class="mr1"
@@ -30,13 +28,25 @@
             v-if="isAssetCasting"
           />
           <span class="filler"></span>
+          <show-infos-button :is-breakdown="true" class="flexrow-item" />
           <button-simple
             class="flexrow-item"
-            :title="isTextMode ? $t('breakdown.picture_mode') : $t('breakdown.text_mode')"
+            :title="
+              isTextMode
+                ? $t('breakdown.picture_mode')
+                : $t('breakdown.text_mode')
+            "
             icon="type"
             :is-on="isTextMode"
             :is-responsive="true"
             @click="toggleTextMode"
+          />
+          <button-simple
+            class="flexrow-item"
+            icon="grid"
+            :is-on="isBigMode"
+            :title="$t('breakdown.big_pictures_mode')"
+            @click="isBigMode = !isBigMode"
           />
           <button-simple
             class="flexrow-item"
@@ -45,6 +55,13 @@
             :is-responsive="true"
             @click="showImportModal"
             v-if="isCurrentUserManager"
+          />
+          <button-simple
+            class="flexrow-item"
+            icon="download"
+            :is-responsive="true"
+            :title="$t('main.csv.export_current_view')"
+            @click="exportViewToCsv"
           />
           <button-href-link
             class="flexrow-item"
@@ -55,23 +72,106 @@
             v-if="isCurrentUserManager"
           />
         </div>
+
         <spinner class="mt1" v-if="isLoading" />
-        <div class="mt1" v-else>
-          <shot-line
-            :key="entity.id"
-            :entity-id="entity.id"
-            :preview-file-id="entity.preview_file_id"
-            :selected="selection[entity.id]"
-            :name="entity.name"
-            :assets="castingByType[entity.id] || []"
-            :read-only="!isCurrentUserManager"
-            :text-mode="isTextMode"
-            @edit-label="onEditLabelClicked"
-            @remove-one="removeOneAsset"
-            @remove-ten="removeTenAssets"
-            @click="selectEntity"
-            v-for="entity in castingEntities"
-          />
+        <div class="casting-list" v-else>
+          <div class="mt1">
+            <div class="header flexrow">
+              <div class="entity-header">
+                {{ $t('shots.fields.name') }}
+              </div>
+              <div class="standby-header" v-if="!isShowInfosBreakdown">
+                {{ $t('breakdown.fields.standby') }}
+              </div>
+              <div
+                class="description-header"
+                v-if="!isShowInfosBreakdown && isDescription"
+              >
+                {{ $t('shots.fields.description') }}
+              </div>
+              <div
+                class="frames-header"
+                v-if="
+                  isShotCasting &&
+                  isFrames &&
+                  !isShowInfosBreakdown &&
+                  metadataDisplayHeaders.frames
+                "
+              >
+                {{ $t('shots.fields.nb_frames') }}
+              </div>
+              <div
+                class="frames-header"
+                v-if="
+                  isShotCasting &&
+                  isFrameIn &&
+                  !isShowInfosBreakdown &&
+                  metadataDisplayHeaders.frameIn
+                "
+              >
+                {{ $t('shots.fields.frame_in') }}
+              </div>
+              <div
+                class="frames-header"
+                v-if="
+                  isShotCasting &&
+                  isFrameOut &&
+                  !isShowInfosBreakdown &&
+                  metadataDisplayHeaders.frameOut
+                "
+              >
+                {{ $t('shots.fields.frame_out') }}
+              </div>
+              <div
+                class="descriptor-header"
+                :key="'descriptor-header-' + descriptor.id"
+                v-for="descriptor in visibleMetadataDescriptors"
+                v-if="!isShowInfosBreakdown"
+              >
+                <department-name
+                  :key="department.id"
+                  :department="department"
+                  :only-dot="true"
+                  :style="{ padding: '0px 0px' }"
+                  v-for="department in descriptorCurrentDepartments(descriptor)"
+                />
+                <span class="flexrow-item descriptor-name">
+                  {{ descriptor.name }}
+                </span>
+              </div>
+              <div
+                :key="assetType"
+                class="asset-type-header"
+                v-for="assetType in castingAssetTypes"
+              >
+                {{ assetType }}
+              </div>
+            </div>
+            <shot-line
+              :key="entity.id"
+              :entity="entity"
+              :preview-file-id="entity.preview_file_id"
+              :selected="selection[entity.id]"
+              :name="getEntityName(entity)"
+              :assets="castingByType[entity.id] || []"
+              :asset-types="castingAssetTypes"
+              :read-only="!isCurrentUserManager"
+              :text-mode="isTextMode"
+              :metadata-descriptors="metadataDescriptors"
+              :metadata-display-headers="metadataDisplayHeaders"
+              :big-mode="isBigMode"
+              :is-description="isDescription"
+              :is-save-error="saveErrors[entity.id]"
+              @edit-label="onEditLabelClicked"
+              @add-one="addOneAsset"
+              @remove-one="removeOneAsset"
+              @click="selectEntity"
+              @metadata-changed="onMetadataChanged"
+              @description-changed="onDescriptionChanged"
+              @standby-changed="onStandbyChanged"
+              v-for="entity in castingEntities"
+            />
+          </div>
         </div>
       </div>
 
@@ -81,10 +181,11 @@
         class="breakdown-column assets-column"
         v-if="isCurrentUserManager"
       >
-        <h2 class="subtitle flexrow">
-          <span class="flexrow-item">
-            {{ $t('breakdown.all_assets') }}
-          </span>
+        <h2 class="flexrow subtitle">
+          {{ $t('breakdown.all_assets') }}
+        </h2>
+        <div class="flexrow mb1 mt0">
+          <span class="filler"></span>
           <button-simple
             class="flexrow-item"
             :title="$t('assets.new_asset')"
@@ -96,9 +197,9 @@
             :text="$t('assets.only_current_episode')"
             :is-on="isOnlyCurrentEpisode"
             @click="isOnlyCurrentEpisode = !isOnlyCurrentEpisode"
-            v-if="isTVShow"
+            v-if="isTVShow && !isEpisodeCasting"
           />
-        </h2>
+        </div>
 
         <div class="filters-area flexrow">
           <search-field
@@ -130,6 +231,7 @@
               :asset="asset"
               :active="Object.keys(selection).length > 0"
               :text-mode="isTextMode"
+              :big-mode="isBigMode"
               @add-one="addOneAsset"
               @add-ten="addTenAssets"
               v-for="asset in typeAssets"
@@ -149,7 +251,7 @@
       :columns="renderColumns"
       :dataMatchers="dataMatchers"
       :database="filteredCasting"
-      :disable-update=true
+      :disable-update="true"
       @reupload="resetImport"
       @cancel="hideImportRenderModal"
       @confirm="uploadImportFile"
@@ -208,14 +310,19 @@
       @confirm="confirmAssetRemoval"
       @cancel="modals.isRemoveConfirmationDisplayed = false"
     />
-
   </div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
+import moment from 'moment'
+
 import { range } from '@/lib/time'
 import csv from '@/lib/csv'
+import clipboard from '@/lib/clipboard'
+import stringHelpers from '@/lib/string'
+import { entityListMixin } from '@/components/mixins/entity_list'
+
 import AvailableAssetBlock from '@/components/pages/breakdown/AvailableAssetBlock'
 import BuildFilterModal from '@/components/modals/BuildFilterModal'
 import ButtonHrefLink from '@/components/widgets/ButtonHrefLink'
@@ -228,11 +335,13 @@ import ImportRenderModal from '@/components/modals/ImportRenderModal'
 import ImportModal from '@/components/modals/ImportModal'
 import SearchField from '@/components/widgets/SearchField'
 import ShotLine from '@/components/pages/breakdown/ShotLine'
+import ShowInfosButton from '@/components/widgets/ShowInfosButton'
 import Spinner from '@/components/widgets/Spinner'
+import DepartmentName from '@/components/widgets/DepartmentName'
 
 export default {
-  name: 'breakdown',
-
+  name: 'breakdown-page',
+  mixins: [entityListMixin],
   components: {
     AvailableAssetBlock,
     BuildFilterModal,
@@ -240,16 +349,18 @@ export default {
     ButtonSimple,
     ComboboxStyled,
     DeleteModal,
+    DepartmentName,
     EditAssetModal,
     EditLabelModal,
     ImportModal,
     ImportRenderModal,
     SearchField,
     ShotLine,
+    ShowInfosButton,
     Spinner
   },
 
-  data () {
+  data() {
     return {
       assetTypeId: '',
       castingType: 'shot',
@@ -258,13 +369,17 @@ export default {
       editedAssetLinkLabel: null,
       episodeId: '',
       importCsvFormData: {},
+      isBigMode: false,
       isLocked: false,
       isLoading: false,
       isOnlyCurrentEpisode: false,
       isTextMode: false,
+      optionalCsvColumns: ['Label'],
+      parsedCSV: [],
       removalData: {},
+      saveErrors: {},
       selection: {},
-      sequenceId: '',
+      sequenceId: 'all',
       errors: {
         edit: false,
         editLabel: false,
@@ -290,58 +405,71 @@ export default {
       },
       success: {
         edit: false
-      },
-      optionalCsvColumns: ['Label'],
-      parsedCSV: []
+      }
     }
   },
 
-  mounted () {
+  mounted() {
     if (!this.isLoading) {
       this.reset()
     }
     this.setLastProductionScreen('breakdown')
     this.isTextMode = localStorage.getItem('breakdown:text-mode') === 'true'
+    window.addEventListener('keydown', this.onKeyDown, false)
+  },
+
+  beforeDestroy() {
+    window.removeEventListener('keydown', this.onKeyDown)
   },
 
   computed: {
     ...mapGetters([
       'assetMap',
+      'assetMetadataDescriptors',
+      'assetTypeMap',
       'assetsByType',
       'casting',
-      'castingEpisodes',
       'castingAssetTypeAssets',
       'castingAssetTypesOptions',
       'castingByType',
       'castingCurrentShot',
-      'castingSequencesOptions',
+      'castingEpisodes',
       'castingSequenceShots',
+      'castingSequencesOptions',
       'currentEpisode',
       'currentProduction',
+      'departmentMap',
+      'displayedSequences',
       'displayedShots',
-      'episodes',
-      'getEpisodeOptions',
-      'isCurrentUserManager',
-      'isAssetsLoading',
-      'isShotsLoading',
-      'isTVShow',
       'episodeMap',
-      'sequences',
+      'episodes',
+      'isAssetsLoading',
+      'isCurrentUserManager',
+      'isFrameIn',
+      'isFrameOut',
+      'isFrames',
+      'isShotsLoading',
+      'isShowInfosBreakdown',
+      'isTVShow',
       'sequenceMap',
-      'shotMap'
+      'shotMap',
+      'shotMetadataDescriptors'
     ]),
 
-    castingTypeOptions () {
-      const options = [
-        {
+    castingTypeOptions() {
+      const isAssetsOnly = this.currentProduction.production_type === 'assets'
+      const isShotsOnly = this.currentProduction.production_type === 'shots'
+      const options = []
+      if (!isShotsOnly) {
+        options.push({
           label: this.$t('assets.title'),
           value: 'asset'
-        }
-      ]
+        })
+      }
       if (
-        !this.isTVShow || (
-          this.currentEpisode && this.currentEpisode.id !== 'main'
-        )
+        !isAssetsOnly &&
+        (!this.isTVShow ||
+          (this.currentEpisode && this.currentEpisode.id !== 'main'))
       ) {
         options.unshift({
           label: this.$t('shots.title'),
@@ -351,44 +479,50 @@ export default {
       return options
     },
 
-    availableAssetsByType () {
+    availableAssetsByType() {
       const result = []
-      this.assetsByType.forEach((typeGroup) => {
+      this.assetsByType.forEach(typeGroup => {
         let newGroup = typeGroup.filter(asset => !asset.canceled)
         if (this.isTVShow && this.isOnlyCurrentEpisode) {
-          newGroup = typeGroup.filter(
-            asset => this.currentEpisode.id !== 'main'
-              ? asset.episode_id === this.currentEpisode.id
-              : !asset.episode_id
-          )
+          newGroup = typeGroup.filter(asset => {
+            return (
+              asset.episode_id === this.currentEpisode.id ||
+              (asset.casting_episode_ids &&
+                asset.casting_episode_ids.includes(this.currentEpisode.id))
+            )
+          })
         }
         if (newGroup.length > 0) result.push(newGroup)
       })
       return result
     },
 
-    exportUrlPath () {
-      let path =
-        `/api/export/csv/projects/${this.currentProduction.id}/casting.csv`
+    exportUrlPath() {
+      let path = `/api/export/csv/projects/${this.currentProduction.id}/casting.csv`
+      let paramAdded = false
       if (this.currentEpisode) {
         path += `?episode_id=${this.currentEpisode.id}`
+        paramAdded = true
+      }
+      if (this.isShotCasting) {
+        path += `${paramAdded ? '&' : '?'}is_shot_casting=${this.isShotCasting}`
       }
       return path
     },
 
-    isEpisodeCasting () {
+    isEpisodeCasting() {
       return this.currentEpisode && this.currentEpisode.id === 'all'
     },
 
-    isAssetCasting () {
+    isAssetCasting() {
       return !this.isEpisodeCasting && this.castingType === 'asset'
     },
 
-    isShotCasting () {
+    isShotCasting() {
       return !this.isEpisodeCasting && this.castingType === 'shot'
     },
 
-    castingEntities () {
+    castingEntities() {
       if (this.isEpisodeCasting) {
         return this.castingEpisodes
       } else if (this.isShotCasting) {
@@ -396,32 +530,45 @@ export default {
       } else {
         if (this.isTVShow && this.currentEpisode.id !== 'main') {
           return this.castingAssetTypeAssets.filter(
-            asset => (
+            asset =>
               asset.episode_id === this.currentEpisode.id ||
               asset.casting_episode_ids.includes(this.currentEpisode.id)
-            )
           )
         } else if (this.isTVShow && this.currentEpisode.id === 'main') {
-          return this.castingAssetTypeAssets.filter(
-            asset => !asset.episode_id)
+          return this.castingAssetTypeAssets.filter(asset => !asset.episode_id)
         } else {
           return this.castingAssetTypeAssets
         }
       }
     },
 
-    editLabelModal () {
+    castingAssetTypes() {
+      const castingAssetTypes = []
+      const assetTypeNameMap = {}
+      this.castingEntities.forEach(entity => {
+        if (this.castingByType[entity.id]) {
+          this.castingByType[entity.id].forEach(type => {
+            if (type[0] && !assetTypeNameMap[type[0].asset_type_name]) {
+              assetTypeNameMap[type[0].asset_type_name] = true
+              castingAssetTypes.push(type[0].asset_type_name)
+            }
+          })
+        }
+      })
+      return castingAssetTypes.sort()
+    },
+
+    editLabelModal() {
       return this.$refs['edit-label-modal']
     },
 
-    filteredCasting () {
+    filteredCasting() {
       const casting = {}
       this.castingEntities.forEach(entity => {
         if (this.castingByType[entity.id]) {
           this.castingByType[entity.id].forEach(type => {
             type.forEach(item => {
-              const castKey =
-                `${item.asset_name}${item.asset_type_name}${item.name}`
+              const castKey = `${item.asset_name}${item.asset_type_name}${item.name}`
               casting[castKey] = true
             })
           })
@@ -430,45 +577,68 @@ export default {
       return casting
     },
 
-    csvColumns () {
-      return this.isTVShow
-        ? [
-          'Episode',
-          'Parent',
-          'Name',
-          'Asset Type',
-          'Asset',
-          'Occurences'
-        ] : [
-          'Parent',
-          'Name',
-          'Asset Type',
-          'Asset',
-          'Occurences'
-        ]
+    isDescription() {
+      return this.castingEntities.some(
+        e => e.description && e.description.length > 0
+      )
     },
 
-    renderColumns () {
+    csvColumns() {
+      return this.isTVShow
+        ? ['Episode', 'Parent', 'Name', 'Asset Type', 'Asset', 'Occurences']
+        : ['Parent', 'Name', 'Asset Type', 'Asset', 'Occurences']
+    },
+
+    renderColumns() {
       return [...this.csvColumns, ...this.optionalCsvColumns]
     },
 
-    dataMatchers () {
+    dataMatchers() {
       return this.isTVShow
-        ? [
-          'Episode',
-          'Name',
-          'Asset Type',
-          'Asset'
-        ] : ['Name',
-          'Asset Type',
-          'Asset'
-        ]
+        ? ['Episode', 'Name', 'Asset Type', 'Asset']
+        : ['Name', 'Asset Type', 'Asset']
+    },
+
+    metadataDescriptors() {
+      if (this.isEpisodeCasting) {
+        return []
+      } else if (this.isShotCasting) {
+        return this.shotMetadataDescriptors
+      } else {
+        return this.assetMetadataDescriptors
+      }
+    },
+
+    metadataDisplayHeaders() {
+      if (this.isEpisodeCasting) {
+        return {}
+      } else if (this.isShotCasting) {
+        return {
+          fps: false,
+          frameIn: true,
+          frameOut: true,
+          frames: true,
+          estimation: false,
+          maxRetakes: false,
+          resolution: false,
+          timeSpent: false
+        }
+      } else {
+        return {
+          estimation: false,
+          readyFor: false,
+          timeSpent: false
+        }
+      }
     }
   },
 
   methods: {
     ...mapActions([
       'addAssetToCasting',
+      'editEpisode',
+      'editShot',
+      'editAsset',
       'displayMoreAssets',
       'loadEpisodeCasting',
       'loadEpisodes',
@@ -479,6 +649,7 @@ export default {
       'newAsset',
       'removeAssetFromCasting',
       'saveCasting',
+      'setAssetLinkLabel',
       'setAssetSearch',
       'setCastingEpisodes',
       'setCastingAssetType',
@@ -487,12 +658,12 @@ export default {
       'setCastingForProductionEpisodes',
       'setCastingSequence',
       'setCurrentEpisode',
-      'setAssetLinkLabel',
+      'setEntityCasting',
       'setLastProductionScreen',
       'uploadCastingFile'
     ]),
 
-    reset () {
+    reset() {
       if (!this.isTVShow) {
         const route = { ...this.$route }
         if (route && route.params && route.params.episode_id) {
@@ -507,7 +678,7 @@ export default {
       }, 100)
     },
 
-    reloadEntities () {
+    reloadEntities() {
       this.isLoading = true
       this.loadShots(() => {
         if (this.isTVShow) {
@@ -519,53 +690,57 @@ export default {
         } else {
           this.setCastingEpisode(null)
         }
-        this.loadAssets(true)
-          .then(() => {
-            this.isLoading = false
-            this.displayMoreAssets()
-            this.setCastingAssetTypes()
-            if (this.assetTypeId) {
-              this.setCastingAssetType(this.assetTypeId)
-            }
-            this.resetSelection()
-            if (this.currentEpisode && this.currentEpisode.id === 'main') {
-              this.castingType = 'asset'
-            }
-          })
+        this.loadAssets(true).then(() => {
+          this.isLoading = false
+          this.displayMoreAssets()
+          this.setCastingAssetTypes()
+          if (this.assetTypeId) {
+            this.setCastingAssetType(this.assetTypeId)
+          } else {
+            this.setCastingSequence(this.sequenceId || 'all')
+          }
+          this.resetSelection()
+          if (
+            (this.currentEpisode && this.currentEpisode.id === 'main') ||
+            this.currentProduction.production_type === 'assets'
+          ) {
+            this.castingType = 'asset'
+          }
+        })
       })
     },
 
-    resetSelection () {
+    resetSelection() {
       const selection = {}
       if (this.isEpisodeCasting) {
-        this.castingEpisodes.forEach((episode) => {
+        this.castingEpisodes.forEach(episode => {
           selection[episode.id] = false
         })
       } else if (this.isShotCasting) {
-        this.castingSequenceShots.forEach((shot) => {
+        this.castingSequenceShots.forEach(shot => {
           selection[shot.id] = false
         })
       } else {
-        this.castingAssetTypeAssets.forEach((asset) => {
+        this.castingAssetTypeAssets.forEach(asset => {
           selection[asset.id] = false
         })
       }
       this.selection = selection
     },
 
-    confirmBuildFilter (query) {
+    confirmBuildFilter(query) {
       this.modals.isBuildFilterDisplayed = false
       this.$refs['search-field'].setValue(query)
       this.onSearchChange(query)
     },
 
-    onSearchChange (searchQuery) {
+    onSearchChange(searchQuery) {
       this.setAssetSearch(searchQuery)
       this.displayMoreAssets()
       this.displayMoreAssets()
     },
 
-    selectEntity (entityId, event) {
+    selectEntity(entityId, event) {
       const previousSelection = { ...this.selection }
       if (!(event.ctrlKey || event.metaKey) && !event.shitKey) {
         this.clearSelection()
@@ -579,9 +754,9 @@ export default {
         this.previousEntityId = entityId
       }
 
-      const nbElementsSelected = Object.keys(previousSelection)
-        .filter(k => previousSelection[k])
-        .length
+      const nbElementsSelected = Object.keys(previousSelection).filter(
+        k => previousSelection[k]
+      ).length
       if (
         !previousSelection[entityId] ||
         (nbElementsSelected > 1 && !(event.ctrlKey || event.metaKey))
@@ -595,15 +770,15 @@ export default {
       }
     },
 
-    clearSelection () {
+    clearSelection() {
       Object.keys(this.selection)
         .filter(k => this.selection[k])
-        .forEach((shotId) => {
+        .forEach(shotId => {
           this.selection[shotId] = false
         })
     },
 
-    selectRange (previousEntityId, entityId) {
+    selectRange(previousEntityId, entityId) {
       const keys = Object.keys(this.selection)
       const previousIndex = keys.findIndex(k => k === previousEntityId)
       const index = keys.findIndex(k => k === entityId)
@@ -612,12 +787,12 @@ export default {
       if (previousIndex < index) indexRange = range(previousIndex, index)
       else indexRange = range(index, previousIndex)
 
-      indexRange.forEach((i) => {
+      indexRange.forEach(i => {
         if (i >= 0) this.selection[keys[i]] = true
       })
     },
 
-    setLock () {
+    setLock() {
       if (!this.$options.lockTimeout) {
         this.$options.lockTimeout = setTimeout(() => {
           this.isLocked = false
@@ -625,36 +800,44 @@ export default {
       }
     },
 
-    addOneAsset (assetId) {
+    addOneAsset(assetId) {
       this.isLocked = true
       Object.keys(this.selection)
         .filter(key => this.selection[key])
-        .forEach((entityId) => {
+        .forEach(entityId => {
           this.addAssetToCasting({
             entityId,
             assetId,
             nbOccurences: 1,
             label: this.castingType === 'shot' ? 'animate' : 'fixed'
           })
+          delete this.saveErrors[entityId]
           this.saveCasting(entityId)
             .then(this.setLock)
-            .catch(console.error)
+            .catch(err => {
+              this.saveErrors[entityId] = true
+              console.error(err)
+            })
         })
     },
 
-    addTenAssets (assetId) {
+    addTenAssets(assetId) {
       this.isLocked = true
       Object.keys(this.selection)
         .filter(key => this.selection[key])
-        .forEach((entityId) => {
+        .forEach(entityId => {
           this.addAssetToCasting({ entityId, assetId, nbOccurences: 10 })
+          delete this.saveErrors[entityId]
           this.saveCasting(entityId)
             .then(this.setLock)
-            .catch(console.error)
+            .catch(err => {
+              this.saveErrors[entityId] = true
+              console.error(err)
+            })
         })
     },
 
-    confirmAssetRemoval () {
+    confirmAssetRemoval() {
       this.saveAssetRemoval(
         this.removalData.entityId,
         this.removalData.assetId,
@@ -662,23 +845,26 @@ export default {
       )
     },
 
-    saveAssetRemoval (entityId, assetId, nbOccurences) {
+    saveAssetRemoval(entityId, assetId, nbOccurences) {
       this.loading.remove = true
       this.removeAssetFromCasting({ entityId, assetId, nbOccurences })
+      delete this.saveErrors[entityId]
       this.saveCasting(entityId)
-        .then(this.setLock)
         .then(() => {
-          this.loading.remove = false
+          this.setLock()
           this.modals.isRemoveConfirmationDisplayed = false
         })
         .catch(err => {
+          this.saveErrors[entityId] = true
           this.errors.remove = true
-          this.loading.remove = false
           console.error(err)
+        })
+        .finally(() => {
+          this.loading.remove = false
         })
     },
 
-    removeOneAsset (assetId, entityId, nbOccurences) {
+    removeOneAsset(assetId, entityId, nbOccurences) {
       this.isLocked = true
       if (this.isEpisodeCasting && nbOccurences === 1) {
         this.removalData = { assetId, entityId, nbOccurences }
@@ -688,7 +874,7 @@ export default {
       }
     },
 
-    removeTenAssets (assetId, entityId, nbOccurences) {
+    removeTenAssets(assetId, entityId, nbOccurences) {
       this.isLocked = true
       if (this.isEpisodeCasting && nbOccurences < 10) {
         this.removalData = { assetId, entityId, nbOccurences }
@@ -698,46 +884,45 @@ export default {
       }
     },
 
-    onAssetListScroll (event, position) {
+    onAssetListScroll(event, position) {
       const assetList = this.$refs['asset-list']
       const maxHeight = assetList.scrollHeight - assetList.offsetHeight
-      if (maxHeight < (position.scrollTop + 100)) {
+      if (maxHeight < position.scrollTop + 100) {
         this.displayMoreAssets()
       }
     },
 
-    showImportModal () {
+    showImportModal() {
       this.modals.importing = true
     },
 
-    hideImportModal () {
+    hideImportModal() {
       this.modals.importing = false
     },
 
-    showImportRenderModal () {
+    showImportRenderModal() {
       this.modals.isImportRenderDisplayed = true
     },
 
-    hideImportRenderModal () {
+    hideImportRenderModal() {
       this.modals.isImportRenderDisplayed = false
     },
 
-    renderImport (data, mode) {
+    renderImport(data, mode) {
       this.loading.importing = true
       this.errors.importing = false
       if (mode === 'file') {
         data = data.get('file')
       }
-      csv.processCSV(data)
-        .then((results) => {
-          this.parsedCSV = results
-          this.hideImportModal()
-          this.loading.importing = false
-          this.showImportRenderModal()
-        })
+      csv.processCSV(data).then(results => {
+        this.parsedCSV = results
+        this.hideImportModal()
+        this.loading.importing = false
+        this.showImportRenderModal()
+      })
     },
 
-    uploadImportFile (data) {
+    uploadImportFile(data) {
       const formData = new FormData()
       const filename = 'import.csv'
       const file = new File([data.join('\n')], filename, { type: 'text/csv' })
@@ -751,20 +936,21 @@ export default {
 
       this.uploadCastingFile(this.importCsvFormData)
         .then(() => {
-          this.loading.importing = false
           this.hideImportRenderModal()
           if (this.sequenceId) {
-            this.setCastingSequence(this.sequenceId)
+            this.setCastingSequence(this.sequenceId || 'all')
           }
         })
         .catch(err => {
-          this.loading.importing = false
           this.errors.importingError = err
           this.errors.importing = true
         })
+        .finally(() => {
+          this.loading.importing = false
+        })
     },
 
-    resetImport () {
+    resetImport() {
       this.errors.importing = false
       this.errors.importingError = null
       this.hideImportRenderModal()
@@ -773,7 +959,7 @@ export default {
       this.showImportModal()
     },
 
-    updateUrl () {
+    updateUrl() {
       let isChange = false
       let route = {}
       if (this.isEpisodeCasting) {
@@ -801,14 +987,14 @@ export default {
           }
         }
       } else {
-        const sequenceId = this.$route.params.sequence_id
+        const sequenceId = this.$route.params.sequence_id || 'all'
         if (sequenceId !== this.sequenceId) {
           isChange = true
           route = {
             name: 'breakdown-sequence',
             params: {
               production_id: this.currentProduction.id,
-              sequence_id: this.sequenceId
+              sequence_id: this.sequenceId || 'all'
             }
           }
         }
@@ -827,14 +1013,14 @@ export default {
       }
     },
 
-    onEditLabelClicked (asset, label, entityId) {
+    onEditLabelClicked(asset, label, entityId) {
       this.editedAsset = asset
       this.editedEntityId = entityId
       this.editedAssetLinkLabel = label
       this.modals.isEditLabelDisplayed = true
     },
 
-    confirmEditLabel (form = {}) {
+    confirmEditLabel(form = {}) {
       const label = form.label
       this.loading.editLabel = true
       this.setAssetLinkLabel({
@@ -846,30 +1032,30 @@ export default {
           this.modals.isEditLabelDisplayed = false
           this.loading.editLabel = false
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err)
           this.errors.editLabel = true
           this.loading.editLabel = false
         })
     },
 
-    toggleTextMode () {
+    toggleTextMode() {
       this.isTextMode = !this.isTextMode
       localStorage.setItem('breakdown:text-mode', this.isTextMode)
     },
 
-    confirmNewAssetStay (form) {
+    confirmNewAssetStay(form) {
       this.loading.stay = true
       this.success.edit = false
       this.newAsset(form)
-        .then((asset) => {
+        .then(asset => {
           this.loading.stay = false
           this.loading.edit = false
           this.resetLightEditModal(asset)
           this.$refs['edit-asset-modal'].focusName()
           this.success.edit = true
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err)
           this.loading.stay = false
           this.loading.edit = false
@@ -878,42 +1064,260 @@ export default {
         })
     },
 
-    confirmNewAsset (form) {
+    confirmNewAsset(form) {
       this.loading.edit = true
       this.errors.edit = false
       this.newAsset(form)
-        .then((form) => {
+        .then(() => {
           this.loading.edit = false
           this.modals.isNewDisplayed = false
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err)
           this.loading.edit = false
           this.errors.edit = true
         })
     },
 
-    resetLightEditModal (asset) {
+    resetLightEditModal(asset) {
       const form = {
         name: '',
         entity_type_id: asset.entit_type_id,
         production_id: this.currentProduction.id
       }
       this.assetToEdit = form
+    },
+
+    onKeyDown(event) {
+      if (!['INPUT', 'TEXTAREA'].includes(event.target.tagName)) {
+        if (event.ctrlKey && event.keyCode === 67) {
+          // ctrl + c
+          this.copyCasting()
+        } else if (event.ctrlKey && event.keyCode === 86) {
+          // ctrl + v
+          this.pasteCasting()
+        }
+      }
+    },
+
+    copyCasting() {
+      const selectedElementId = Object.keys(this.selection).find(
+        key => this.selection[key]
+      )
+      const selectedCasting = this.casting[selectedElementId]
+      clipboard.copyCasting(selectedCasting)
+    },
+
+    pasteCasting() {
+      const castingToPaste = clipboard.pasteCasting()
+      if (!castingToPaste || castingToPaste.length === 0) return
+      const selectedElements = Object.keys(this.selection).filter(
+        key => this.selection[key]
+      )
+      selectedElements.forEach(entityId => {
+        this.setEntityCasting({
+          entityId,
+          casting: castingToPaste
+        })
+        delete this.saveErrors[entityId]
+        this.saveCasting(entityId)
+          .then(this.setLock)
+          .catch(err => {
+            this.saveErrors[entityId] = true
+            console.error(err)
+          })
+      })
+      return castingToPaste
+    },
+
+    onMetadataChanged({ entry, descriptor, value }) {
+      const metadata = {}
+      metadata[descriptor.field_name] = value
+      const data = {
+        id: entry.id,
+        data: metadata
+      }
+      if (this.isEpisodeCasting) {
+        this.editEpisode(data)
+      } else if (this.isShotCasting) {
+        this.editShot(data)
+      } else {
+        this.editAsset(data)
+      }
+    },
+
+    onDescriptionChanged(entity, value) {
+      const data = {
+        id: entity.id,
+        description: value
+      }
+      if (this.isEpisodeCasting) {
+        this.editEpisode(data)
+      } else if (this.isShotCasting) {
+        this.editShot(data)
+      } else {
+        this.editAsset(data)
+      }
+    },
+
+    onStandbyChanged(entity, value) {
+      const data = {
+        id: entity.id,
+        is_casting_standby: value
+      }
+      if (this.isEpisodeCasting) {
+        this.editEpisode(data)
+      } else if (this.isShotCasting) {
+        this.editShot(data)
+      } else {
+        this.editAsset(data)
+      }
+    },
+
+    descriptorCurrentDepartments(descriptor) {
+      const departemts = descriptor.departments || []
+      return departemts.map(departmentId =>
+        this.departmentMap.get(departmentId)
+      )
+    },
+
+    getEntityName(entity) {
+      return this.sequenceId === 'all' &&
+        (!this.isTVShow || (this.isTVShow && this.currentEpisode.id !== 'all'))
+        ? entity.sequence_name + ' / ' + entity.name
+        : entity.name
+    },
+
+    getCsvFileName() {
+      const nameData = [
+        moment().format('YYYY-MM-DD'),
+        'kitsu',
+        this.castingType + 's',
+        this.currentProduction.name,
+        this.$t('breakdown.title')
+      ]
+      if (this.isTVShow) {
+        if (this.currentEpisode) {
+          if (this.currentEpisode.id == 'all') {
+            nameData.splice(4, 0, 'all')
+          } else if (this.currentEpisode.id == 'main') {
+            nameData.splice(4, 0, 'main pack')
+            if (this.assetTypeId !== 'all' && this.castingType == 'asset') {
+              nameData.splice(
+                5,
+                0,
+                this.assetTypeMap.get(this.assetTypeId).name
+              )
+            }
+          } else {
+            nameData.splice(4, 0, this.currentEpisode.name)
+            if (this.sequenceId !== 'all' && this.castingType == 'shot') {
+              nameData.splice(5, 0, this.sequenceMap.get(this.sequenceId).name)
+            }
+            if (this.assetTypeId !== 'all' && this.castingType == 'asset') {
+              nameData.splice(
+                5,
+                0,
+                this.assetTypeMap.get(this.assetTypeId).name
+              )
+            }
+          }
+        }
+      } else {
+        if (this.sequenceId !== 'all' && this.castingType == 'shot') {
+          nameData.splice(5, 0, this.sequenceMap.get(this.sequenceId).name)
+        }
+        if (this.assetTypeId !== 'all' && this.castingType == 'asset') {
+          nameData.splice(5, 0, this.assetTypeMap.get(this.assetTypeId).name)
+        }
+      }
+      return stringHelpers.slugify(nameData.join('_'))
+    },
+
+    getCsvFileHeaders() {
+      const headers = [
+        this.$t('shots.fields.name'),
+        this.$t('breakdown.fields.standby')
+      ]
+      if (this.isFrames) {
+        headers.push(this.$t('main.frames'))
+      }
+      if (this.isFrameIn) {
+        headers.push(this.$t('main.frame_in'))
+      }
+      if (this.isFrameOut) {
+        headers.push(this.$t('main.frame_out'))
+      }
+      this.metadataDescriptors.forEach(descriptor => {
+        headers.push(descriptor.name)
+      })
+      return headers.concat(this.castingAssetTypes)
+    },
+
+    getCsvEntries() {
+      const entries = this.castingEntities.map(entity => {
+        const entry = [entity.name, entity.is_casting_standby ? 'X' : '']
+        if (this.isFrames) {
+          entry.push(entity.nb_frames)
+        }
+        if (this.isFrameIn) {
+          entry.push(entity.data.frame_in)
+        }
+        if (this.isFrameOut) {
+          entry.push(entity.data.frame_out)
+        }
+        this.metadataDescriptors.forEach(descriptor => {
+          entry.push(entity.data[descriptor.field_name] || '')
+        })
+
+        const assets = this.castingByType[entity.id] || []
+        const assetsByAssetTypesMap = {}
+        assets.forEach(assetTypeAssets => {
+          assetsByAssetTypesMap[assetTypeAssets[0].asset_type_name] =
+            assetTypeAssets
+        })
+        this.castingAssetTypes.forEach(assetTypeName => {
+          const typeAssets = assetsByAssetTypesMap[assetTypeName] || []
+          const nbAssetsForType = typeAssets.reduce(
+            (acc, a) => acc + a.nb_occurences,
+            0
+          )
+          if (nbAssetsForType > 0) {
+            let casting = nbAssetsForType + ' assets: '
+            casting += typeAssets
+              .map(asset => {
+                return asset.asset_name + ' (' + asset.nb_occurences + ')'
+              })
+              .join(', ')
+            entry.push(casting)
+          } else {
+            entry.push('')
+          }
+        })
+        return entry
+      })
+      return entries
+    },
+
+    exportViewToCsv() {
+      const entries = this.getCsvEntries()
+      const name = this.getCsvFileName()
+      const headers = this.getCsvFileHeaders()
+      csv.buildCsvFile(name, [headers].concat(entries))
     }
   },
 
   watch: {
-    $route () {},
+    $route() {},
 
-    castingType () {
-      if (this.isShotCasting && this.sequences.length > 0) {
-        this.sequenceId = this.sequences[0].id
+    castingType() {
+      if (this.isShotCasting && this.displayedSequences.length > 0) {
+        this.sequenceId = this.displayedSequences[0].id
         this.assetTypeId = ''
       }
       if (this.isAssetCasting && this.castingAssetTypesOptions.length > 0) {
         const assetTypeId = this.$route.params.asset_type_id
-        this.sequenceId = ''
+        this.sequenceId = 'all'
         this.castingType = 'asset'
         if (assetTypeId) {
           this.assetTypeId = assetTypeId
@@ -923,11 +1327,12 @@ export default {
       }
     },
 
-    sequenceId () {
+    sequenceId() {
       if (
         this.sequenceId &&
-        this.sequences &&
-        this.sequences.length > 0
+        this.displayedSequences &&
+        this.displayedSequences.length > 0 &&
+        !this.isAssetCasting
       ) {
         this.setCastingSequence(this.sequenceId)
         this.updateUrl()
@@ -935,7 +1340,7 @@ export default {
       }
     },
 
-    assetTypeId () {
+    assetTypeId() {
       if (this.assetTypeId && this.castingAssetTypesOptions.length > 0) {
         this.setCastingAssetType(this.assetTypeId)
         this.updateUrl()
@@ -943,7 +1348,7 @@ export default {
       }
     },
 
-    episodeId () {
+    episodeId() {
       if (this.episodeId && this.episodes && this.episodes.length > 0) {
         if (this.episodeId === 'all') {
           this.setCastingForProductionEpisodes(this.episodeId)
@@ -952,23 +1357,20 @@ export default {
       }
     },
 
-    castingSequencesOptions () {
+    castingSequencesOptions() {
       if (this.$route.path.indexOf('asset-type') < 0) {
-        const sequenceId = this.$route.params.sequence_id
-        if (
-          sequenceId &&
-          this.sequenceMap.get(sequenceId)
-        ) {
+        const sequenceId = this.$route.params.sequence_id || 'all'
+        if (sequenceId && this.sequenceMap.get(sequenceId)) {
           this.sequenceId = sequenceId
         } else if (this.castingSequencesOptions.length > 0) {
           this.sequenceId = this.castingSequencesOptions[0].value
         } else {
-          this.sequenceId = ''
+          this.sequenceId = 'all'
         }
       }
     },
 
-    castingAssetTypesOptions () {
+    castingAssetTypesOptions() {
       if (this.$route.path.indexOf('asset-type') > 0) {
         const assetTypeId = this.$route.params.asset_type_id
         this.castingType = 'asset'
@@ -982,13 +1384,13 @@ export default {
       }
     },
 
-    currentProduction () {
+    currentProduction() {
       if (!this.isLoading) {
         this.reset()
       }
     },
 
-    currentEpisode () {
+    currentEpisode() {
       if (
         this.currentEpisode &&
         this.episodeId !== this.currentEpisode.id &&
@@ -1002,35 +1404,28 @@ export default {
       }
     },
 
-    sequences () {
-      this.$store.commit('CASTING_SET_SEQUENCES', this.sequences)
+    displayedSequences() {
+      this.$store.commit('CASTING_SET_SEQUENCES', this.displayedSequences)
     }
   },
 
   socket: {
     events: {
-      'episode:casting-update' (eventData) {
+      'episode:casting-update'(eventData) {
         const episode = this.episodeMap.get(eventData.episode_id)
-        if (
-          episode &&
-          !this.isLocked
-        ) {
+        if (episode && !this.isLocked) {
           this.loadEpisodeCasting(episode)
         }
       },
 
-      'shot:casting-update' (eventData) {
+      'shot:casting-update'(eventData) {
         const shot = this.shotMap.get(eventData.shot_id)
-        if (
-          shot &&
-          shot.sequence_id === this.sequenceId &&
-          !this.isLocked
-        ) {
+        if (shot && shot.sequence_id === this.sequenceId && !this.isLocked) {
           this.loadShotCasting(shot)
         }
       },
 
-      'asset:casting-update' (eventData) {
+      'asset:casting-update'(eventData) {
         const asset = this.assetMap.get(eventData.asset_id)
         if (
           asset &&
@@ -1043,7 +1438,7 @@ export default {
     }
   },
 
-  metaInfo () {
+  metaInfo() {
     const pageTitle = this.$t('breakdown.title')
     return {
       title: `${this.currentProduction.name} ${pageTitle} - Kitsu`
@@ -1072,7 +1467,7 @@ export default {
   bottom: 0;
   display: flex;
   flex-direction: column;
-  background: #FAFAFA;
+  background: #fafafa;
   padding-left: 1em;
   padding-right: 1em;
   padding-bottom: 1em;
@@ -1088,11 +1483,13 @@ export default {
 
 .breakdown-column {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   padding: 1em;
   background: white;
-  border: 1px solid #EEE;
-  box-shadow: 0px 0px 6px #E0E0E0;
+  border: 1px solid #eee;
+  box-shadow: 0px 0px 6px #e0e0e0;
   border-radius: 1em;
 
   &:not(:first-child) {
@@ -1101,6 +1498,7 @@ export default {
 }
 
 .casting-column {
+  overflow: hidden;
   flex: 1;
 }
 
@@ -1128,16 +1526,13 @@ export default {
   flex-wrap: wrap;
 }
 
-.level-right {
-  display-flex: row;
-}
-
 .shots-title {
   font-weight: bold;
 }
 
 .subtitle {
-  font-size: 1.5em;
+  border-bottom: 0;
+  margin-top: 0;
 }
 
 .filters-area {
@@ -1145,6 +1540,89 @@ export default {
 
   .search-field-wrapper {
     margin-right: 0.5em;
+  }
+}
+
+.entity-header,
+.description-header,
+.descriptor-header,
+.frames-header,
+.asset-type-header,
+.standby-header {
+  border-right: 1px solid $light-grey;
+  padding-left: 10px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.description-header {
+  min-width: 250px;
+  max-width: 250px;
+}
+
+.descriptor-header {
+  min-width: 119px;
+  max-width: 119px;
+}
+
+.frames-header {
+  min-width: 81px;
+  max-width: 81px;
+  text-align: right;
+  padding-right: 0.5em;
+}
+
+.asset-type-header {
+  padding-left: 1em;
+  min-width: 150px;
+  max-width: 150px;
+}
+
+.standby-header {
+  max-width: 80px;
+  min-width: 80px;
+  text-align: center;
+  justify-content: center;
+  padding-left: 0px;
+}
+
+.entity-header {
+  border-right: 2px solid $light-grey;
+  margin: 0;
+  max-width: 301px;
+  min-width: 301px;
+  padding-left: 0.5em;
+  left: 0;
+  position: sticky;
+}
+
+.header {
+  border-bottom: 2px solid $light-grey;
+  font-size: 1.1em;
+  color: var(--text-alt);
+  font-size: 0.9em;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 0;
+  position: sticky;
+  top: 0;
+  text-transform: uppercase;
+  z-index: 20;
+
+  div {
+    background: var(--background);
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+  }
+}
+
+.casting-list {
+  overflow: auto;
+  display: flex;
+
+  .mt1 {
+    flex: 1;
   }
 }
 </style>

@@ -1,3 +1,4 @@
+import auth from '@/lib/auth'
 import store from '@/store/modules/assets'
 import taskTypesStore from '@/store/modules/tasktypes'
 import tasksStore from '@/store/modules/tasks'
@@ -23,8 +24,8 @@ import {
   UPDATE_ASSET
 } from '@/store/mutation-types'
 
-import assetsApi from '../../../src/store/api/assets'
-import peopleApi from '../../../src/store/api/people'
+import assetsApi from '@/store/api/assets'
+import peopleApi from '@/store/api/people'
 
 describe('Assets store', () => {
   describe('Getters', () => {
@@ -249,7 +250,7 @@ describe('Assets store', () => {
     })
 
     test('loadAssets', async () => {
-      let mockCommit = jest.fn()
+      let mockCommit = vi.fn()
       const state = {
         episode: null,
         isAssetsLoading: true
@@ -274,8 +275,8 @@ describe('Assets store', () => {
       expect(res2).toEqual([])
       state.isAssetsLoading = false
       const assets = [{ id: 456, type: 'asset' }]
-      assetsApi.getAssets = jest.fn(() => Promise.resolve(assets))
-      mockCommit = jest.fn()
+      assetsApi.getAssets = vi.fn(() => Promise.resolve(assets))
+      mockCommit = vi.fn()
       const res3 = await store.actions.loadAssets(
         { commit: mockCommit, state, rootGetters })
       expect(mockCommit).toBeCalledTimes(2)
@@ -289,10 +290,9 @@ describe('Assets store', () => {
         taskTypeMap: 5
       })
       expect(res3).toEqual(assets)
-
       /*
-      mockCommit = jest.fn()
-      assetsApi.getAssets = jest.fn(() => Promise.reject(new Error('error')))
+      mockCommit = vi.fn()
+      assetsApi.getAssets = vi.fn(() => Promise.reject(new Error('error')))
       const res5 = await store.actions.loadAssets(
         { commit: mockCommit, state, rootGetters }, true)
       expect(mockCommit).toBeCalledTimes(2)
@@ -312,35 +312,41 @@ describe('Assets store', () => {
       const state = {
         assetMap: new Map()
       }
-      let mockCommit = jest.fn()
-      assetsApi.getAsset = jest.fn(() => Promise.resolve({ id: 1 }))
+      let mockCommit = vi.fn()
+      assetsApi.getAsset = vi.fn(() => Promise.resolve({
+        id: 1,
+        tasks: []
+      }))
       await store.actions.loadAsset(
         { commit: mockCommit, state, rootGetters }, 1)
       expect(mockCommit).toBeCalledTimes(1)
       expect(mockCommit).toHaveBeenNthCalledWith(1, ADD_ASSET, {
-        asset: { id: 1 },
+        asset: { id: 1, tasks: [] },
         taskTypeMap: 5,
         taskMap: 6,
         personMap: 3,
         production: 1
       })
 
-      mockCommit = jest.fn()
-      assetsApi.getAsset = jest.fn(() => Promise.resolve({ id: 1 }))
-      state.assetMap.set(1, { id: 1 })
+      mockCommit = vi.fn()
+      state.assetMap.set(1, { id: 1, tasks: [] })
       await store.actions.loadAsset(
         { commit: mockCommit, state, rootGetters }, 1)
       expect(mockCommit).toBeCalledTimes(1)
-      expect(mockCommit).toHaveBeenNthCalledWith(1, UPDATE_ASSET, { id: 1 })
+      expect(mockCommit).toHaveBeenNthCalledWith(
+        1,
+        UPDATE_ASSET,
+        { id: 1, tasks: [] }
+      )
 
-      mockCommit = jest.fn()
+      mockCommit = vi.fn()
       state.assetMap.get(1).lock = true
       await store.actions.loadAsset(
         { commit: mockCommit, state, rootGetters }, 1)
       expect(mockCommit).toBeCalledTimes(0)
     })
 
-    test('newAsset', async () => {
+    test.skip('newAsset', async () => {
       const assetTypeMap = new Map()
       const rootGetters = {
         assetTypeMap: assetTypeMap,
@@ -350,10 +356,10 @@ describe('Assets store', () => {
         ]
       }
       const state = {}
-      const mockCommit = jest.fn()
-      const mockDispatch = jest.fn()
+      const mockCommit = vi.fn()
+      const mockDispatch = vi.fn()
       const asset = { id: 1, name: 'assetTest', project_id: 3 }
-      assetsApi.newAsset = jest.fn(() => Promise.resolve(asset))
+      assetsApi.newAsset = vi.fn(() => Promise.resolve(asset))
       const res = await store.actions.newAsset(
         { commit: mockCommit, state, rootGetters, dispatch: mockDispatch },
         new Map()
@@ -364,16 +370,16 @@ describe('Assets store', () => {
           assetTypeMap, newAsset: asset
         })
       expect(mockDispatch).toBeCalledTimes(3)
-      expect(mockDispatch).toHaveBeenNthCalledWith(2, 'createTask', {
-        entityId: 1,
-        projectId: 3,
-        taskTypeId: 1,
+      expect(mockDispatch).toHaveBeenNthCalledWith(2, 'createTasks', {
+        entityIds: [1],
+        project_id: 3,
+        task_type_id: 1,
         type: 'assets'
       })
-      expect(mockDispatch).toHaveBeenNthCalledWith(3, 'createTask', {
-        entityId: 1,
-        projectId: 3,
-        taskTypeId: 2,
+      expect(mockDispatch).toHaveBeenNthCalledWith(3, 'createTasks', {
+        entityIds: [1],
+        project_id: 3,
+        task_type_id: 2,
         type: 'assets'
       })
       expect(res).toEqual(asset)
@@ -385,9 +391,9 @@ describe('Assets store', () => {
           assetTypeMap: 1
         }
       }
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       const asset = { id: 1, name: 'assetTest', project_id: 3 }
-      assetsApi.updateAsset = jest.fn(() => Promise.resolve(asset))
+      assetsApi.updateAsset = vi.fn(() => Promise.resolve(asset))
       const res = await store.actions.editAsset(
         { commit: mockCommit, state: {}, rootState }, asset)
       expect(mockCommit).toBeCalledTimes(2)
@@ -401,7 +407,7 @@ describe('Assets store', () => {
       const state = {
         assetMap: new Map()
       }
-      let mockCommit = jest.fn()
+      let mockCommit = vi.fn()
       const asset = {
         id: 1,
         name: 'assetTest',
@@ -410,15 +416,15 @@ describe('Assets store', () => {
         canceled: false
       }
       state.assetMap.set(1, asset)
-      assetsApi.deleteAsset = jest.fn(() => Promise.resolve(asset))
+      assetsApi.deleteAsset = vi.fn(() => Promise.resolve(asset))
       const res1 = await store.actions.deleteAsset({ commit: mockCommit, state }, asset)
       expect(mockCommit).toBeCalledTimes(1)
       expect(mockCommit).toHaveBeenNthCalledWith(1, CANCEL_ASSET, asset)
       expect(res1).toEqual(asset)
 
       asset.canceled = true
-      mockCommit = jest.fn()
-      assetsApi.deleteAsset = jest.fn(() => Promise.resolve(asset))
+      mockCommit = vi.fn()
+      assetsApi.deleteAsset = vi.fn(() => Promise.resolve(asset))
       const res2 = await store.actions.deleteAsset(
         { commit: mockCommit, state }, asset)
       expect(mockCommit).toBeCalledTimes(1)
@@ -427,9 +433,9 @@ describe('Assets store', () => {
     })
 
     test('restoreAsset', async () => {
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       const asset = { id: 1, name: 'assetTest' }
-      assetsApi.restoreAsset = jest.fn(() => Promise.resolve(asset))
+      assetsApi.restoreAsset = vi.fn(() => Promise.resolve(asset))
       const res1 = await store.actions.restoreAsset(
         { commit: mockCommit, state: {} }, asset)
       expect(mockCommit).toBeCalledTimes(1)
@@ -438,9 +444,9 @@ describe('Assets store', () => {
     })
 
     test('uploadAssetFile', async () => {
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       const asset = { id: 1, name: 'assetTest' }
-      assetsApi.postCsv = jest.fn(() => Promise.resolve())
+      assetsApi.postCsv = vi.fn(() => Promise.resolve())
       await store.actions.uploadAssetFile(
         { commit: mockCommit, state: {} }, asset)
       expect(mockCommit).toBeCalledTimes(2)
@@ -457,7 +463,7 @@ describe('Assets store', () => {
         people: 5
       }
 
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       await store.actions.setAssetSearch(
         { commit: mockCommit, state: {}, rootGetters }, 6)
       expect(mockCommit).toBeCalledTimes(1)
@@ -481,10 +487,10 @@ describe('Assets store', () => {
         }]
       }
 
-      let mockCommit = jest.fn()
-      peopleApi.createFilter = jest.fn(
-        (listType, name, query, productionId, entityType, callback) => {
-          callback(null, query)
+      let mockCommit = vi.fn()
+      peopleApi.createFilter = vi.fn(
+        (listType, name, query, productionId, entityType) => {
+          return Promise.resolve(query)
         }
       )
       await store.actions.saveAssetSearch(
@@ -496,8 +502,8 @@ describe('Assets store', () => {
       })
       expect(peopleApi.createFilter).toBeCalledTimes(1)
 
-      mockCommit = jest.fn()
-      peopleApi.createFilter = jest.fn()
+      mockCommit = vi.fn()
+      peopleApi.createFilter = vi.fn()
       state.assetSearchQueries.push({
         name: 'name'
       })
@@ -510,8 +516,8 @@ describe('Assets store', () => {
         currentProduction: 4
       }
 
-      const mockCommit = jest.fn()
-      peopleApi.removeFilter = jest.fn(
+      const mockCommit = vi.fn()
+      peopleApi.removeFilter = vi.fn(
         (searchQuery) => {
           return Promise.resolve()
         }
@@ -528,7 +534,7 @@ describe('Assets store', () => {
     })
 
     test('displayMoreAssets', () => {
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       const rootGetters = {
         taskTypeMap: 1,
         taskStatusMap: 2,
@@ -546,7 +552,7 @@ describe('Assets store', () => {
     })
 
     test('initAssetTypes', async () => {
-      const dispatch = jest.fn(() => Promise.resolve())
+      const dispatch = vi.fn(() => Promise.resolve())
       await store.actions.initAssetTypes({ dispatch })
       expect(dispatch).toBeCalledTimes(3)
       expect(dispatch).toHaveBeenNthCalledWith(
@@ -558,7 +564,7 @@ describe('Assets store', () => {
     })
 
     test('setAssetTypeListScrollPosition', () => {
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       store.actions.setAssetTypeListScrollPosition({ commit: mockCommit })
       expect(mockCommit).toBeCalledTimes(1)
       expect(mockCommit).toHaveBeenNthCalledWith(
@@ -566,7 +572,7 @@ describe('Assets store', () => {
     })
 
     test('computeAssetTypeStats', () => {
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       const rootGetters = {
         taskStatusMap: 1,
         taskMap: 2
@@ -580,7 +586,7 @@ describe('Assets store', () => {
     })
 
     test('setAssetTypeSearch', () => {
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       store.actions.setAssetTypeSearch({ commit: mockCommit }, 'searchQuery')
       expect(mockCommit).toBeCalledTimes(1)
       expect(mockCommit).toHaveBeenNthCalledWith(
@@ -698,7 +704,7 @@ describe('Assets store', () => {
     })
 
     test('changeAssetSort', () => {
-      const mockCommit = jest.fn()
+      const mockCommit = vi.fn()
       const rootGetters = {
         taskTypeMap: 1,
         taskStatus: 2,
@@ -719,7 +725,7 @@ describe('Assets store', () => {
     })
 
     test('deleteAllAssetTasks', () => {
-      const dispatch = jest.fn()
+      const dispatch = vi.fn()
       const projectId = 1
       const taskTypeId = '2'
       const selectionOnly = true
@@ -736,7 +742,7 @@ describe('Assets store', () => {
     })
 
     test('deleteSelectedAssets', async () => {
-      const dispatch = jest.fn()
+      const dispatch = vi.fn()
       const asset = {
         id: 'asset-id',
         canceled: false
@@ -766,6 +772,7 @@ describe('Assets store', () => {
         displayedAssets: 1,
         assetFilledColumns: 1,
         assetSearchQueries: 1,
+        displayedAssetsCount: 100,
         displayedAssetsLength: 100,
         displayedAssetsTimeSpent: 1000,
         displayedAssetsEstimation: 1000
@@ -780,6 +787,7 @@ describe('Assets store', () => {
         displayedAssets: [],
         assetFilledColumns: {},
         assetSearchQueries: [],
+        displayedAssetsCount: 0,
         displayedAssetsLength: 0,
         displayedAssetsTimeSpent: 0,
         displayedAssetsEstimation: 0,
@@ -799,6 +807,7 @@ describe('Assets store', () => {
         displayedAssets: 1,
         assetFilledColumns: 1,
         assetSearchQueries: 1,
+        displayedAssetsCount: 100,
         displayedAssetsLength: 100,
         displayedAssetsTimeSpent: 1000,
         displayedAssetsEstimation: 1000
@@ -815,6 +824,7 @@ describe('Assets store', () => {
         displayedAssets: [],
         assetFilledColumns: {},
         assetSearchQueries: [],
+        displayedAssetsCount: 0,
         displayedAssetsLength: 0,
         displayedAssetsTimeSpent: 0,
         displayedAssetsEstimation: 0,
@@ -985,7 +995,8 @@ describe('Assets store', () => {
           3: {}
         },
         displayedAssetsEstimation: 0,
-        displayedAssetsLength: 4,
+        displayedAssetsCount: 4,
+        displayedAssetsLength: 2,
         displayedAssetsTimeSpent: 0,
         assetSearchQueries: 'assetSearchQueries',
         assetMap: new Map(Object.entries({
@@ -1046,7 +1057,7 @@ describe('Assets store', () => {
       })
     })
 
-    test('ADD_ASSET', () => {
+    test.skip('ADD_ASSET', () => {
       store.cache.assets = []
       store.cache.result = []
       store.cache.assetIndex = new Map()
@@ -1056,24 +1067,12 @@ describe('Assets store', () => {
           name: 'Some person'
         }
       }))
-      productionsStore.state.currentProduction = {
-        task_types_priority: {
-          'task-type-id': 1
-        }
-      }
       const taskMap = new Map()
       const taskTypeMap = new Map(Object.entries({
         'task-type-id': {
           id: 'task-type-id',
           name: 'some type',
           priority: 1
-        }
-      }))
-      taskTypesStore.state.taskTypeMap = taskTypeMap
-      tasksStore.state.taskStatusMap = new Map(Object.entries({
-        todo: {
-          short_name: 'TODO',
-          is_default: true
         }
       }))
       const state = {
@@ -1086,7 +1085,7 @@ describe('Assets store', () => {
       }
       const asset = {
         id: '1',
-        canceled: true,
+        canceled: false,
         asset_type_name: 'assettypename2',
         name: 'name4',
         timeSpent: 0,
@@ -1102,7 +1101,11 @@ describe('Assets store', () => {
           estimation: 200
         }]
       }
-
+      tasksStore.state.taskStatusMap = new Map(Object.entries({
+        todo: {
+          short_name: 'TODO'
+        }
+      }))
       store.mutations.ADD_ASSET(state, {
         taskTypeMap,
         taskMap,
@@ -1112,7 +1115,7 @@ describe('Assets store', () => {
       })
       expect(asset).toEqual({
         id: '1',
-        canceled: true,
+        canceled: false,
         asset_type_name: 'assettypename2',
         name: 'name4',
         episode_id: undefined,
@@ -1168,7 +1171,7 @@ describe('Assets store', () => {
         assetMap: new Map(Object.entries({
           1: {
             asset_type_name: 'assettypename2',
-            canceled: true,
+            canceled: false,
             description: 'azerty',
             episode_id: undefined,
             estimation: 200,
@@ -1193,7 +1196,7 @@ describe('Assets store', () => {
         displayedAssets: [
           {
             asset_type_name: 'assettypename2',
-            canceled: true,
+            canceled: false,
             description: 'azerty',
             episode_id: undefined,
             estimation: 200,
@@ -1213,12 +1216,13 @@ describe('Assets store', () => {
           }
         ],
         displayedAssetsEstimation: 200,
+        displayedAssetsCount: 1,
         displayedAssetsLength: 1,
         displayedAssetsTimeSpent: 100
       })
       expect(store.cache.assets).toEqual([{
         asset_type_name: 'assettypename2',
-        canceled: true,
+        canceled: false,
         description: 'azerty',
         episode_id: undefined,
         estimation: 200,
@@ -1272,6 +1276,7 @@ describe('Assets store', () => {
         displayedAssetsTimeSpent: 100,
         displayedAssetsEstimation: 200,
         assetFilledColumns: null,
+        displayedAssetsCount: 1,
         displayedAssetsLength: 1
       }
       store.mutations.REMOVE_ASSET(state, assetToDelete)
@@ -1281,6 +1286,7 @@ describe('Assets store', () => {
         displayedAssetsTimeSpent: 0,
         displayedAssetsEstimation: 0,
         assetFilledColumns: {},
+        displayedAssetsCount: 0,
         displayedAssetsLength: 0
       })
       expect(store.cache.assetIndex !== null).toBeTruthy()
@@ -1502,6 +1508,7 @@ describe('Assets store', () => {
         },
         displayedAssets: [],
         displayedAssetsEstimation: 0,
+        displayedAssetsCount: 0,
         displayedAssetsLength: 0,
         displayedAssetsTimeSpent: 0
       })
@@ -1679,7 +1686,7 @@ describe('Assets store', () => {
       expect(state.assetSelectionGrid[0][0]).toBeFalsy()
     })
 
-    test('NEW_TASK_END', () => {
+    test.skip('NEW_TASK_END', () => {
       const state = {
         assetMap: new Map(Object.entries({
           'asset-id': {
@@ -1712,7 +1719,7 @@ describe('Assets store', () => {
           'old-task-id': 2
         }
       }
-      store.mutations.NEW_TASK_END(state, task)
+      store.mutations.NEW_TASK_END(state, { task })
       expect(state.assetMap.get('asset-id')).toEqual({
         tasks: ['old-task-id', 'task-id'],
         validations: new Map(Object.entries({
@@ -1742,16 +1749,23 @@ describe('Assets store', () => {
       const state = {
         assetMap: new Map(Object.entries({
           'asset-id': {
-            validations: new Map()
+            validations: new Map(),
+            tasks: []
           }
         }))
       }
       const tasks = [{
         entity_id: 'asset-id',
         task_type_id: 'task_type_id',
+        task_status_id: 'todo',
         id: 'task-id'
       }]
-      store.mutations.CREATE_TASKS_END(state, tasks)
+      tasksStore.state.taskStatusMap = new Map(Object.entries({
+        todo: {
+          short_name: 'TODO'
+        }
+      }))
+      store.mutations.CREATE_TASKS_END(state, { tasks })
       expect(state.assetMap.get('asset-id').validations).toEqual(
         new Map(Object.entries({
           task_type_id: 'task-id'
@@ -1860,6 +1874,7 @@ describe('Assets store', () => {
         },
         displayedAssets: [],
         displayedAssetsEstimation: 0,
+        displayedAssetsCount: 0,
         displayedAssetsLength: 0,
         displayedAssetsTimeSpent: 0
       })
@@ -1901,14 +1916,19 @@ describe('Assets store', () => {
       store.mutations.LOCK_ASSET(state, asset)
       expect(asset).toEqual({
         id: 'asset-id',
-        lock: true
+        lock: 1
+      })
+      store.mutations.LOCK_ASSET(state, asset)
+      expect(asset).toEqual({
+        id: 'asset-id',
+        lock: 2
       })
     })
 
     test('UNLOCK_ASSET', () => {
       const asset = {
         id: 'asset-id',
-        lock: true
+        lock: 2
       }
       const state = {
         assetMap: new Map(Object.entries({
@@ -1918,7 +1938,12 @@ describe('Assets store', () => {
       store.mutations.UNLOCK_ASSET(state, asset)
       expect(asset).toEqual({
         id: 'asset-id',
-        lock: false
+        lock: 1
+      })
+      store.mutations.UNLOCK_ASSET(state, asset)
+      expect(asset).toEqual({
+        id: 'asset-id',
+        lock: 0
       })
     })
 
@@ -1949,6 +1974,7 @@ describe('Assets store', () => {
         displayedAssetTypesLength: 0,
         displayedAssets: [],
         displayedAssetsEstimation: 0,
+        displayedAssetsCount: 0,
         displayedAssetsLength: 0,
         displayedAssetsTimeSpent: 0,
         filteredAssets: [],

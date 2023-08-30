@@ -4,8 +4,8 @@ import Vuex from 'vuex'
 import store from '../../../src/store/modules/breakdown'
 import breakdownApi from '../../../src/store/api/breakdown'
 
-breakdownApi.updateCasting = jest.fn()
-breakdownApi.getSequenceCasting = jest.fn()
+breakdownApi.updateCasting = vi.fn()
+breakdownApi.getSequenceCasting = vi.fn()
 
 const localVue = createLocalVue()
 localVue.use(Vuex)
@@ -79,49 +79,60 @@ describe('Breakdown store', () => {
       acc[entity.id] = entity; return acc
     }
     shotMap = new Map(Object.entries(shots.reduce(entityMapReducer, {})))
-    expectedSequencesOptions = [{
-      label: 'SE01',
-      value: 'sequence-1',
-      route: {
-        name: 'breakdown-sequence',
-        params: {
-          production_id: 'production-1',
-          sequence_id: 'sequence-1'
+    expectedSequencesOptions = [
+      {
+        label: 'All',
+        value: 'all',
+        route: {
+          name: 'breakdown-sequence',
+          params: {
+            production_id: 'production-1',
+            sequence_id: 'all'
+          }
+        }
+      }, {
+        label: 'SE01',
+        value: 'sequence-1',
+        route: {
+          name: 'breakdown-sequence',
+          params: {
+            production_id: 'production-1',
+            sequence_id: 'sequence-1'
+          }
+        }
+      },
+      {
+        label: 'SE02',
+        value: 'sequence-2',
+        route: {
+          name: 'breakdown-sequence',
+          params: {
+            production_id: 'production-1',
+            sequence_id: 'sequence-2'
+          }
         }
       }
-    },
-    {
-      label: 'SE02',
-      value: 'sequence-2',
-      route: {
-        name: 'breakdown-sequence',
-        params: {
-          production_id: 'production-1',
-          sequence_id: 'sequence-2'
-        }
-      }
-    }]
+    ]
     rootState = {
       productions: { currentProduction: production },
       assets: { assetMap },
-      shots: { shotMap, sequences }
+      shots: { shotMap },
+      sequences: { displayedSequences: sequences }
     }
     rootGetters = {
-      currentProduction: production
+      currentProduction: production,
+      shotMap,
+      displayedSequences: sequences
     }
     breakdownApi.getSequenceCasting.mockImplementation(
       () => Promise.resolve({ 'shot-1': assetCasting })
     )
   })
 
-  describe('Getters', () => {
-    // No complex getters
-  })
-
   describe('Actions', () => {
     test('setCastingSequence', async () => {
       await store.actions.setCastingSequence(
-        { commit, rootState }, 'sequence-1'
+        { commit, rootState, rootGetters }, 'sequence-1'
       )
       expect(vuexStore.state.castingSequenceId).toEqual('sequence-1')
       expect(vuexStore.state.castingSequenceShots).toEqual([shots[0]])
@@ -129,7 +140,7 @@ describe('Breakdown store', () => {
     })
     test('setCastingEpisode', async () => {
       await store.actions.setCastingEpisode(
-        { commit, rootState }, 'episode-1'
+        { commit, rootState, rootGetters }, 'episode-1'
       )
       expect(vuexStore.state.castingEpisodeId).toEqual('episode-1')
       expect(vuexStore.state.castingSequencesOptions)

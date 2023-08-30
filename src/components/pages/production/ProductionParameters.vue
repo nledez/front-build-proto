@@ -25,7 +25,7 @@
               :label="$t('productions.fields.end_date')"
               :short-date="true"
               v-model="form.end_date"
-             />
+            />
           </div>
         </div>
         <combobox
@@ -39,6 +39,8 @@
 
         <text-field
           ref="nbEpisodesField"
+          type="number"
+          :step="1"
           :label="$t('productions.fields.nb_episodes')"
           @enter="runConfirmation"
           v-focus
@@ -56,6 +58,9 @@
 
         <text-field
           ref="fpsField"
+          type="number"
+          :max="60"
+          :step="0.001"
           :label="$t('productions.fields.fps')"
           @enter="runConfirmation"
           v-focus
@@ -86,9 +91,19 @@
           v-model="form.is_clients_isolated"
           v-if="currentProduction && currentProduction.id"
         />
+        <text-field
+          ref="maxRetakesField"
+          type="number"
+          :step="1"
+          :label="$t('productions.fields.max_retakes')"
+          @enter="runConfirmation"
+          v-focus
+          v-model="form.max_retakes"
+          v-if="currentProduction && currentProduction.id"
+        />
 
         <div v-if="currentProduction && currentProduction.id">
-          <label class="label">{{ $t("productions.picture") }}</label>
+          <label class="label">{{ $t('productions.picture') }}</label>
           <file-upload
             ref="fileField"
             :is-primary="false"
@@ -103,7 +118,7 @@
         <div class="has-text-right mt2">
           <button-simple
             :is-primary="true"
-            :class="{'is-loading': isLoading}"
+            :class="{ 'is-loading': isLoading }"
             :disabled="isLoading"
             :text="$t('main.save')"
             @click="editParameters"
@@ -115,7 +130,6 @@
 </template>
 
 <script>
-
 import { mapGetters, mapActions } from 'vuex'
 import { formatSimpleDate, parseSimpleDate } from '@/lib/time'
 import { PRODUCTION_TYPE_OPTIONS } from '@/lib/productions'
@@ -138,7 +152,7 @@ export default {
     ButtonSimple
   },
 
-  data () {
+  data() {
     return {
       formData: null,
       isLoading: false,
@@ -152,6 +166,7 @@ export default {
         nb_episodes: 0,
         episode_span: 0,
         fps: '',
+        max_retakes: 0,
         is_clients_isolated: 'false',
         ratio: '',
         resolution: '',
@@ -167,18 +182,18 @@ export default {
       'isTVShow'
     ])
   },
-  mounted () {
+  mounted() {
     this.resetForm()
   },
   watch: {
     currentProduction: {
-      handler () {
+      handler() {
         this.resetForm()
         this.updateTvShowRelatedDatas(this.isTVShow)
       },
       deep: true
     },
-    'form.production_type' (newProductionType) {
+    'form.production_type'(newProductionType) {
       this.updateTvShowRelatedDatas(newProductionType === 'tvshow')
     }
   },
@@ -189,21 +204,21 @@ export default {
       'uploadProductionAvatar'
     ]),
 
-    onFileSelected (formData) {
+    onFileSelected(formData) {
       this.formData = formData
       this.storeProductionPicture(formData)
     },
 
-    isEmpty (str) {
-      return (!str || str.length === 0)
+    isEmpty(str) {
+      return !str || str.length === 0
     },
 
-    runConfirmation () {
+    runConfirmation() {
       this.$emit('confirm', this.form)
     },
 
     // Update the isLocalTVShow boolean and changes values linked to tvshow in form
-    updateTvShowRelatedDatas (isTVShow) {
+    updateTvShowRelatedDatas(isTVShow) {
       this.isLocalTVShow = isTVShow
       if (isTVShow && this.currentProduction) {
         this.form.nb_episodes = this.currentProduction.nb_episodes
@@ -214,17 +229,19 @@ export default {
       }
     },
 
-    resetForm () {
+    resetForm() {
       if (this.currentProduction) {
         this.form = {
           name: this.currentProduction.name,
-          start_date:
-            parseSimpleDate(this.currentProduction.start_date).toDate(),
+          start_date: parseSimpleDate(
+            this.currentProduction.start_date
+          ).toDate(),
           end_date: parseSimpleDate(this.currentProduction.end_date).toDate(),
           production_type: this.currentProduction.production_type || 'short',
-          nb_episodes: this.currentProduction.nb_episodes,
           episode_span: this.currentProduction.episode_span,
           fps: this.currentProduction.fps,
+          max_retakes: this.currentProduction.max_retakes,
+          nb_episodes: this.currentProduction.nb_episodes,
           is_clients_isolated: this.currentProduction.is_clients_isolated
             ? 'true'
             : 'false',
@@ -239,6 +256,7 @@ export default {
           production_type: 'short',
           nb_episodes: 0,
           episode_span: 0,
+          max_retakes: 0,
           is_clients_isolated: 'false',
           fps: '',
           ratio: '',
@@ -247,17 +265,15 @@ export default {
       }
     },
 
-    async editParameters () {
+    async editParameters() {
       this.isLoading = true
       try {
-        await this.editProduction(
-          {
-            id: this.currentProduction.id,
-            ...this.form,
-            start_date: formatSimpleDate(this.form.start_date),
-            end_date: formatSimpleDate(this.form.end_date)
-          }
-        )
+        await this.editProduction({
+          id: this.currentProduction.id,
+          ...this.form,
+          start_date: formatSimpleDate(this.form.start_date),
+          end_date: formatSimpleDate(this.form.end_date)
+        })
         if (this.productionAvatarFormData) {
           await this.uploadProductionAvatar(this.currentProduction.id)
         }
@@ -273,6 +289,10 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.columns {
+  margin-bottom: 2em;
+}
+
 .column {
   overflow-y: initial;
   padding: initial;

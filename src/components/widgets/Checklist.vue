@@ -1,47 +1,64 @@
 <template>
-<div>
-  <div
-    :class="{
-      'checklist-entry': true,
-      flexrow: true,
-      checked: entry.checked
-    }"
-    :key="'comment-checklist-' + '-' + index"
-    v-for="(entry, index) in checklist"
-  >
-    <span
-      class="flexrow-item"
-      @click="toggleEntryChecked(entry)"
+  <div>
+    <div
+      :class="{
+        'checklist-entry': true,
+        flexrow: true,
+        checked: entry.checked
+      }"
+      :key="'comment-checklist-' + '-' + index"
+      v-for="(entry, index) in checklist"
     >
-      <check-square-icon class="icon" v-if="entry.checked" />
-      <square-icon class="icon" v-else />
-    </span>
-    <textarea-autosize
-      type="text"
-      class="checklist-text flexrow-item"
-      :ref="`checklist-entry-${index}`"
-      rows="1"
-      :placeholder="$t('comments.task_placeholder')"
-      @keypress.enter.prevent.native="addChecklistEntry(index, $event)"
-      @keyup.backspace.native="removeChecklistEntry(index)"
-      @keyup.up.native="focusPrevious(index)"
-      @keyup.down.native="focusNext(index)"
-      :disabled="entry.text.length !== 0 && disabled"
-      v-model="entry.text"
-    ></textarea-autosize>
+      <span class="flexrow-item" @click="toggleEntryChecked(entry)">
+        <check-square-icon class="icon" v-if="entry.checked" />
+        <square-icon class="icon" v-else />
+      </span>
+      <span
+        class="flexrow-item frame pointer"
+        @click="
+          $emit('time-code-clicked', {
+            frame: entry.frame,
+            revision: entry.revision
+          })
+        "
+        v-show="entry.frame >= 0"
+      >
+        v{{ entry.revision }} - {{ formatFrame(entry.frame) }}
+      </span>
+      <span
+        class="flexrow-item"
+        @click="setFrame(entry)"
+        v-show="isMoviePreview"
+      >
+        <clock-icon class="icon clock" />
+      </span>
+      <textarea-autosize
+        type="text"
+        class="checklist-text flexrow-item"
+        :ref="`checklist-entry-${index}`"
+        rows="1"
+        :placeholder="$t('comments.task_placeholder')"
+        @keypress.enter.prevent.native="addChecklistEntry(index, $event)"
+        @keyup.backspace.native="removeChecklistEntry(index)"
+        @keyup.up.native="focusPrevious(index)"
+        @keyup.down.native="focusNext(index)"
+        :disabled="entry.text.length !== 0 && disabled"
+        v-model.trim="entry.text"
+      ></textarea-autosize>
+    </div>
   </div>
-</div>
 </template>
 
 <script>
-
-import { CheckSquareIcon, SquareIcon } from 'vue-feather-icons'
+import { CheckSquareIcon, ClockIcon, SquareIcon } from 'vue-feather-icons'
+import { formatFrame } from '@/lib/video'
 
 export default {
   name: 'checklist',
 
   components: {
     CheckSquareIcon,
+    ClockIcon,
     SquareIcon
   },
 
@@ -53,15 +70,37 @@ export default {
     disabled: {
       default: false,
       type: Boolean
+    },
+    frame: {
+      default: -1,
+      type: Number
+    },
+    isMoviePreview: {
+      default: false,
+      type: Boolean
+    },
+    revision: {
+      default: -1,
+      type: Number
     }
   },
 
   methods: {
-    addChecklistEntry (index, event) {
+    addChecklistEntry(index, event) {
       if (index === -1 || index === this.checklist.length - 1) {
         this.$emit('add-item', {
           index,
           text: '',
+          frame: -1,
+          revision: -1,
+          checked: false
+        })
+      } else {
+        this.$emit('insert-item', {
+          index: index + 1,
+          text: '',
+          frame: -1,
+          revision: -1,
           checked: false
         })
       }
@@ -71,7 +110,7 @@ export default {
       })
     },
 
-    removeChecklistEntry (index) {
+    removeChecklistEntry(index) {
       const entry = this.checklist[index]
       if (entry.text.length === 0) {
         this.$emit('remove-task', entry)
@@ -79,7 +118,7 @@ export default {
       }
     },
 
-    focusPrevious (index) {
+    focusPrevious(index) {
       if (this.checklist.length > 0) {
         if (index === 0) index = this.checklist.length
         index--
@@ -88,7 +127,9 @@ export default {
       }
     },
 
-    focusNext (index) {
+    formatFrame,
+
+    focusNext(index) {
       if (this.checklist.length > 0) {
         if (index === this.checklist.length - 1) index = -1
         index++
@@ -97,7 +138,15 @@ export default {
       }
     },
 
-    toggleEntryChecked (entry) {
+    setFrame(item) {
+      item.checked = !item.checked
+      item.revision = this.revision
+      item.frame = this.frame
+      item.checked = !item.checked
+      this.$emit('emit-change')
+    },
+
+    toggleEntryChecked(entry) {
       entry.checked = !entry.checked
       this.$emit('emit-change')
     }
@@ -108,7 +157,6 @@ export default {
 <style lang="scss" scoped>
 .dark {
   .checklist-entry {
-
     .checklist-text {
       color: $light-grey-light;
       background: transparent;
@@ -128,7 +176,10 @@ export default {
           border: 1px solid transparent;
         }
       }
+    }
 
+    &.checked .checklist-text {
+      color: #999;
     }
   }
 }
@@ -167,6 +218,7 @@ export default {
   }
 
   &.checked .checklist-text {
+    color: #bbb;
     text-decoration: line-through;
   }
 
@@ -179,6 +231,19 @@ export default {
     .icon {
       width: 20px;
     }
+
+    .clock {
+      width: 16px;
+    }
+  }
+
+  .frame {
+    border: 1px solid var(--border-alt);
+    border-radius: 4px;
+    width: 70px;
+    margin-top: 2px;
+    padding: 0 0.2em;
+    text-align: center;
   }
 }
 </style>

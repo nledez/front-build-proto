@@ -1,97 +1,100 @@
 <template>
-<div :class="{
-  'modal': true,
-  'is-active': active
-}">
-  <div class="modal-background" @click="$emit('cancel')" ></div>
+  <div
+    :class="{
+      modal: true,
+      'is-active': active
+    }"
+  >
+    <div class="modal-background" @click="$emit('cancel')"></div>
 
-  <div class="modal-content">
-    <div class="box content">
-      <h1 class="title">
-        {{ $t("tasks.comment_image") }}
-      </h1>
+    <div class="modal-content">
+      <div class="box content">
+        <h2 class="subtitle">{{ title }}</h2>
+        <h1 class="title">
+          {{ $t('tasks.comment_image') }}
+        </h1>
 
-      <p>
-        {{ $t("tasks.select_file") }}
-      </p>
+        <div class="flexrow buttons">
+          <file-upload
+            ref="file-field"
+            class="flexrow-item"
+            :label="$t('main.select_file')"
+            :accept="extensions"
+            :multiple="true"
+            :is-primary="false"
+            @fileselected="onFileSelected"
+            hide-file-names
+          />
+          <p class="flexrow-item mt1" v-if="isMovie">
+            {{ $t('main.or') }}
+          </p>
+          <p class="flexrow-item" v-if="isMovie">
+            <button
+              :class="{
+                button: true,
+                'is-loading': isAnnotationLoading
+              }"
+              @click="$emit('add-snapshots')"
+            >
+              {{ $t('main.attach_snapshots') }}
+            </button>
+          </p>
+        </div>
 
-      <file-upload
-        ref="file-field"
-        :label="$t('main.select_file')"
-        :accept="extensions"
-        :multiple="true"
-        @fileselected="onFileSelected"
-      />
-      <p class="error" v-if="isError">
-        $t('main.add')
-      </p>
-
-      <p class="mt1" v-if="isMovie">
-        Or:
-      </p>
-
-      <p v-if="isMovie">
-        <button
-          :class="{
-            button: true,
-            'is-loading': isAnnotationLoading
-          }"
-          @click="$emit('add-snapshots')"
-        >
-          {{ $t('main.attach_snapshots') }}
-        </button>
-      </p>
-
-      <p class="has-text-right">
-        <a
-          :class="{
-            button: true,
-            'is-primary': true,
-            'is-loading': isLoading,
-            'is-disabled': forms == undefined
-          }"
-          @click="confirm()"
-        >
-          {{ $t("main.confirmation") }}
-        </a>
-        <button
-          @click="$emit('cancel')"
-          class="button is-link">
-          {{ $t("main.cancel") }}
-        </button>
-      </p>
-
-      <p class="upload-previews" v-if="forms">
-        <template v-for="(form, i) in forms">
-          <hr :key="'separator-' + i"/>
-          <img
-            alt="uploaded file"
-            :src="getURL(form)"
-            :key="i"
-            v-if="isImage(form)"
+        <h3 class="subtitle has-text-centered" v-if="forms.length > 0">
+          {{ $t('comments.selected_files') }}
+        </h3>
+        <p class="upload-previews" v-if="forms.length > 0">
+          <template v-for="(form, i) in forms">
+            <p class="attachment-name" :key="'name-' + i">
+              {{ form.get('file').name }}
+              <span @click="removeAttachment(form)">x</span>
+            </p>
+            <img
+              alt="uploaded file"
+              :src="getURL(form)"
+              :key="i"
+              v-if="isImage(form)"
+            />
+            <video
+              class="is-fullwidth"
+              preload="auto"
+              controls
+              loop
+              muted
+              :src="getURL(form)"
+              :key="i"
+              v-else-if="isVideo(form)"
+            />
+            <iframe
+              class="is-fullwidth"
+              frameborder="0"
+              :src="getURL(form)"
+              :key="i"
+              v-else-if="isPdf(form)"
+            />
+            <hr :key="'separator-' + i" />
+          </template>
+        </p>
+        <p class="has-text-right mt2">
+          <a
+            :class="{
+              button: true,
+              'is-primary': true,
+              'is-loading': isLoading,
+              'is-disabled': forms.length === 0
+            }"
+            @click="confirm()"
           >
-          <video
-            class="is-fullwidth"
-            preload="auto"
-            controls
-            loop
-            muted
-            :src="getURL(form)"
-            :key="i"
-            v-else-if="isVideo(form)"
-          />
-          <iframe
-            class="is-fullwidth"
-            frameborder="0"
-            :src="getURL(form)"
-            :key="i"
-            v-else-if="isPdf(form)"
-          />
-        </template>
-      </p>
+            {{ $t('tasks.confirm_attachments') }}
+          </a>
+          <button @click="$emit('cancel')" class="button is-link">
+            {{ $t('main.cancel') }}
+          </button>
+        </p>
+      </div>
     </div>
   </div>
-</div>
 </template>
 
 <script>
@@ -132,89 +135,95 @@ export default {
     extensions: {
       type: String,
       default: files.ALL_EXTENSIONS_STRING
+    },
+    title: {
+      type: String,
+      default: ''
     }
   },
 
-  data () {
+  data() {
     return {
-      forms: null,
+      forms: [],
       isAnnotationLoading: false
     }
   },
 
   computed: {
-    ...mapGetters([
-    ]),
+    ...mapGetters([]),
 
-    fileField () {
+    fileField() {
       return this.$refs['file-field']
     }
   },
 
   methods: {
-    ...mapActions([
-    ]),
+    ...mapActions([]),
 
-    onFileSelected (forms) {
-      this.forms = forms
+    onFileSelected(forms) {
+      this.forms = this.forms.concat(forms)
     },
 
-    confirm () {
+    confirm() {
       this.$emit('confirm', this.forms)
     },
 
-    reset () {
+    reset() {
       this.fileField.reset()
-      this.forms = null
+      this.forms = []
     },
 
-    onPaste (event) {
+    onPaste(event) {
       if (this.active && event.clipboardData.files) {
         this.addFiles(event.clipboardData.files)
       }
     },
 
-    getURL (form) {
+    getURL(form) {
       return window.URL.createObjectURL(form.get('file'))
     },
 
-    isImage (form) {
+    isImage(form) {
       return form.get('file').type.startsWith('image')
     },
 
-    isVideo (form) {
+    isVideo(form) {
       return form.get('file').type.startsWith('video')
     },
 
-    isPdf (form) {
+    isPdf(form) {
       return form.get('file').type.indexOf('pdf') > 0
     },
 
-    addFiles (files) {
+    addFiles(files) {
       this.fileField.filesChange('', files)
     },
 
-    showAnnotationLoading () {
+    showAnnotationLoading() {
       this.isAnnotationLoading = true
     },
 
-    hideAnnotationLoading () {
+    hideAnnotationLoading() {
       this.isAnnotationLoading = false
+    },
+
+    removeAttachment(form) {
+      this.forms = this.forms.filter(f => f !== form)
     }
   },
 
   watch: {
-    active () {
+    active() {
       this.reset()
     }
   },
 
-  mounted () {
-    this.forms = null
+  mounted() {
+    this.forms = []
     window.addEventListener('paste', this.onPaste, false)
   },
 
-  beforeDestroy () {
+  beforeDestroy() {
     window.removeEventListener('paste', this.onPaste)
   }
 }
@@ -243,5 +252,40 @@ export default {
 
 .upload-previews {
   text-align: center;
+}
+
+.subtitle {
+  color: $grey;
+  font-size: 1.2em;
+  margin: 0;
+  padding: 0;
+  text-transform: uppercase;
+}
+
+.content h1.title {
+  margin-bottom: 0.5em;
+  margin-top: 0.5em;
+}
+
+h3 {
+  font-weight: 350;
+  font-size: 1.4em;
+  margin-top: 0.5em;
+  padding: 0;
+}
+
+.attachment-name span {
+  cursor: pointer;
+  float: right;
+}
+
+h3.subtitle {
+  margin-top: 2em;
+  margin-bottom: 1em;
+  font-weight: 400;
+}
+
+.buttons {
+  flex-wrap: wrap;
 }
 </style>

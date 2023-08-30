@@ -1,56 +1,43 @@
 <template>
-<div class="field">
-  <label class="label" v-if="label.length > 0">
-    {{ label }}
-  </label>
-  <div
-    class="production-combo"
-  >
-    <div
-      class="flexrow"
+  <div class="field">
+    <label class="label" v-if="label.length > 0">
+      {{ label }}
+    </label>
+    <div class="production-combo">
+      <div class="flexrow" @click="toggleProductionList">
+        <div class="selected-production-line flexrow-item">
+          <production-name
+            :production="currentProduction"
+            :no-link="true"
+            :size="25"
+            v-if="currentProduction"
+          />
+        </div>
+        <chevron-down-icon class="down-icon flexrow-item" />
+      </div>
+      <div class="select-input" ref="select" v-if="showProductionList">
+        <div
+          class="production-line"
+          v-for="production in productionList"
+          @click="selectProduction(production)"
+          :key="production.id"
+        >
+          <production-name
+            :size="25"
+            :no-link="true"
+            :production="production"
+          />
+        </div>
+      </div>
+    </div>
+    <combobox-mask
+      :displayed="showProductionList"
       @click="toggleProductionList"
-    >
-      <div
-        class="selected-production-line flexrow-item"
-      >
-        <production-name
-          :production="currentProduction"
-          :no-link="true"
-          :size="25"
-          v-if="currentProduction"
-        />
-      </div>
-      <chevron-down-icon class="down-icon flexrow-item"/>
-    </div>
-    <div
-      class="select-input"
-      ref="select"
-      v-if="showProductionList"
-    >
-      <div
-        class="production-line"
-        v-for="production in productionList"
-        @click="selectProduction(production)"
-        :key="production.id"
-      >
-        <production-name
-          :size="25"
-          :no-link="true"
-          :production="production"
-        />
-      </div>
-    </div>
+    />
   </div>
-  <combobox-mask
-    :displayed="showProductionList"
-    @click="toggleProductionList"
-  />
-</div>
-
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
 import { ChevronDownIcon } from 'vue-feather-icons'
 
 import ComboboxMask from '@/components/widgets/ComboboxMask'
@@ -65,7 +52,7 @@ export default {
     ProductionName
   },
 
-  data () {
+  data() {
     return {
       showProductionList: false
     }
@@ -86,31 +73,22 @@ export default {
     }
   },
 
-  mounted () {
-  },
-
   computed: {
-    ...mapGetters([
-      'openProductions',
-      'productionMap'
-    ]),
-
-    currentProduction () {
-      if (this.value) {
-        return this.productionMap.get(this.value)
-      } else {
-        return this.productionList[0]
-      }
+    currentProduction() {
+      return (
+        this.productionList.find(({ id }) => id === this.value) ||
+        this.productionList[0]
+      )
     }
   },
 
   methods: {
-    selectProduction (production) {
+    selectProduction(production) {
       this.$emit('input', production.id)
       this.showProductionList = false
     },
 
-    toggleProductionList () {
+    toggleProductionList() {
       this.showProductionList = !this.showProductionList
     }
   }
@@ -139,14 +117,14 @@ export default {
   border: 1px solid $light-grey-light;
   user-select: none;
   cursor: pointer;
-  border-radius: 3px;
+  border-radius: 10px;
   margin: 0;
   padding: 0.15em;
   position: relative;
-}
 
-.production-combo:hover {
-  border: 1px solid $green;
+  &:hover {
+    border: 1px solid $green;
+  }
 }
 
 .selected-production-line {
@@ -186,7 +164,7 @@ export default {
 }
 
 .field .label {
-  padding-top: 0px;
+  padding-top: 0;
   margin-bottom: 5px;
 }
 </style>

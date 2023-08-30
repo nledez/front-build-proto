@@ -3,7 +3,10 @@
     <button-simple
       :text="$t('preview_room.leave_room')"
       class="preview-room-button"
-      @click="leaveRoom(); openRoom()"
+      @click="
+        leaveRoom()
+        openRoom()
+      "
       v-if="joinedRoom"
     />
     <button-simple
@@ -14,13 +17,13 @@
     />
     <people-avatar
       class="person-avatar"
-      :key="personEmailMap.get(personEmail).id"
-      :person="personEmailMap.get(personEmail)"
+      :key="personId"
+      :person="personMap.get(personId)"
       :size="30"
       :font-size="15"
       :is-link="false"
-      v-for="personEmail in room.people"
-      v-if="personEmailMap.get(personEmail)"
+      v-for="personId in room.people"
+      v-if="personMap.get(personId)"
     />
   </div>
 </template>
@@ -46,7 +49,7 @@ export default {
     leaveRoom: { type: Function }
   },
 
-  data () {
+  data() {
     return {
       room: {
         people: [],
@@ -55,30 +58,25 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     this.openRoom()
   },
 
-  beforeDestroy () {
-  },
+  beforeDestroy() {},
 
   computed: {
-    ...mapGetters([
-      'personEmailMap',
-      'user'
-    ]),
+    ...mapGetters(['personMap', 'user']),
 
-    joinedRoom () {
+    joinedRoom() {
       if (!this.roomId) {
         return
       }
-      return !!this.room.people.find(email => email === this.user.email)
+      return !!this.room.people.find(id => id === this.user.id)
     }
   },
 
   methods: {
-
-    openRoom () {
+    openRoom() {
       if (!this.roomId) {
         return
       }
@@ -88,29 +86,33 @@ export default {
     }
   },
 
-  watch: {
-  }
+  watch: {}
 }
 </script>
 
-<style>
+<style lang="scss" scoped>
 .preview-room {
   font-size: 1.5em;
 }
 
 .preview-room-button.button {
-  background: $dark-grey-light;
-  border: 1px solid $dark-grey-strong;
+  color: var(--text);
+  background: none;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  margin-right: 0.5em;
+  margin: 4px 0.5em 4px 0;
 
   &:hover {
-    background: $dark-grey-lighter;
+    background-color: var(--background-tag-button);
   }
 }
 
 .avatar.person-avatar {
   display: inline-flex;
-  margin-right: 4px;
+  margin: 4px 4px 4px 0;
+
+  &:last-child {
+    margin-right: 0.5em;
+  }
 }
 </style>

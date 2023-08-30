@@ -1,36 +1,42 @@
 <template>
-<div class="field" :class="{ 'is-inline': isInline }">
-  <label class="label" v-if="label">{{ label }}</label>
-  <label class="label empty-label" v-if="emptyLabel">A</label>
-  <p class="control" :class="{
-    'is-inline': isInline,
-    flexrow: !isInline
-  }">
-    <input
-      ref="input"
-      :class="errored
-        ? 'input flexrow-item errored' + inputClass
-        : 'input flexrow-item' + inputClass"
-      :placeholder="placeholder"
-      :type="type"
-      :value="value"
-      :disabled="disabled"
-      :maxlength="maxlength"
-      min="0"
-      :max="max || undefined"
-      :step="step || undefined"
-      @input="updateValue()"
-      @keyup.enter="emitEnter()"
-    />
-    <button
-      class="button flexrow-item"
-      @click="emitEnter()"
-      v-if="buttonLabel"
+  <div class="field" :class="{ 'is-inline': isInline }">
+    <label class="label" v-if="label">{{ label }}</label>
+    <label class="label empty-label" v-if="emptyLabel">A</label>
+    <p
+      class="control"
+      :class="{
+        'is-inline': isInline,
+        flexrow: !isInline
+      }"
     >
-      {{ buttonLabel }}
-    </button>
-  </p>
-</div>
+      <input
+        ref="input"
+        :class="
+          errored
+            ? 'input flexrow-item errored' + inputClass
+            : 'input flexrow-item' + inputClass
+        "
+        :placeholder="placeholder"
+        :type="type"
+        :value="value"
+        :disabled="disabled"
+        :maxlength="maxlength"
+        :min="min"
+        :max="max || undefined"
+        :step="step || 'any'"
+        :readonly="readonly"
+        @input="updateValue()"
+        @keyup.enter="emitEnter()"
+      />
+      <button
+        class="button flexrow-item"
+        @click="emitEnter()"
+        v-if="buttonLabel"
+      >
+        {{ buttonLabel }}
+      </button>
+    </p>
+  </div>
 </template>
 
 <script>
@@ -67,6 +73,10 @@ export default {
       default: '',
       type: String
     },
+    min: {
+      default: 0,
+      type: Number
+    },
     max: {
       type: Number
     },
@@ -88,27 +98,29 @@ export default {
     emptyLabel: {
       default: false,
       type: Boolean
+    },
+    readonly: {
+      default: false,
+      type: Boolean
     }
   },
 
   computed: {
-    ...mapGetters([
-    ])
+    ...mapGetters([])
   },
 
   methods: {
-    ...mapActions([
-    ]),
+    ...mapActions([]),
 
-    emitEnter () {
+    emitEnter() {
       this.$emit('enter', this.$refs.input.value)
     },
 
-    updateValue () {
+    updateValue() {
       this.$emit('input', this.$refs.input.value)
     },
 
-    focus () {
+    focus() {
       this.$refs.input.focus()
     }
   }
@@ -135,7 +147,7 @@ export default {
 
 input.input {
   font-size: 1.2em;
-
+  border-radius: 10px;
 }
 input.input.thin {
   height: 2.4em;
@@ -149,17 +161,18 @@ button {
   font-size: 1.2em;
 }
 
+.input:invalid,
 .input.errored {
   border-color: $red;
 }
 
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
-input[type="number"] {
-    -moz-appearance: textfield;
+input[type='number'] {
+  -moz-appearance: textfield;
 }
 
 .empty-label {

@@ -1,52 +1,65 @@
 <template>
-<div :class="{
-  'modal': true,
-  'is-active': active
-}">
-  <div class="modal-background" @click="$emit('cancel')" ></div>
+  <div
+    :class="{
+      modal: true,
+      'is-active': active
+    }"
+  >
+    <div class="modal-background" @click="$emit('cancel')"></div>
 
-  <div class="modal-content">
-    <div class="box">
+    <div class="modal-content">
+      <div class="box">
+        <h1 class="title" v-if="sequenceToEdit && this.sequenceToEdit.id">
+          {{ $t('sequences.edit_title') }} {{ sequenceToEdit.name }}
+        </h1>
+        <h1 class="title" v-else>
+          {{ $t('sequences.new_sequence') }}
+        </h1>
 
-      <h1 class="title" v-if="sequenceToEdit && this.sequenceToEdit.id">
-        {{ $t("sequences.edit_title") }} {{ sequenceToEdit.name }}
-      </h1>
-      <h1 class="title" v-else>
-        {{ $t("sequences.new_sequence") }}
-      </h1>
+        <form v-on:submit.prevent>
+          <text-field
+            ref="nameField"
+            :label="$t('sequences.fields.name')"
+            v-model="form.name"
+            @enter="runConfirmation"
+            v-focus
+          />
+          <textarea-field
+            ref="descriptionField"
+            :label="$t('sequences.fields.description')"
+            @keyup.ctrl.enter="runConfirmation"
+            @keyup.meta.enter="runConfirmation"
+            v-model="form.description"
+          />
 
-      <form v-on:submit.prevent>
-        <text-field
-          ref="nameField"
-          :label="$t('sequences.fields.name')"
-          v-model="form.name"
-          @enter="runConfirmation"
-          v-focus
+          <metadata-field
+            :key="descriptor.id"
+            :descriptor="descriptor"
+            :entity="sequenceToEdit"
+            @enter="runConfirmation"
+            v-model="form.data[descriptor.field_name]"
+            v-for="descriptor in sequenceMetadataDescriptors"
+            v-if="sequenceToEdit"
+          />
+        </form>
+
+        <modal-footer
+          :error-text="$t('sequences.edit_error')"
+          :is-loading="isLoading"
+          :is-error="isError"
+          @confirm="runConfirmation"
+          @cancel="$emit('cancel')"
         />
-        <textarea-field
-          ref="descriptionField"
-          :label="$t('sequences.fields.description')"
-          v-model="form.description"
-          @keyup.ctrl.enter="runConfirmation"
-          @keyup.meta.enter="runConfirmation"
-        />
-      </form>
-
-      <modal-footer
-        :error-text="$t('sequences.edit_error')"
-        :is-loading="isLoading"
-        :is-error="isError"
-        @confirm="confirmClicked"
-        @cancel="$emit('cancel')"
-      />
+      </div>
     </div>
   </div>
-</div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import { modalMixin } from '@/components/modals/base_modal'
+
+import MetadataField from '@/components/widgets/MetadataField'
 import ModalFooter from '@/components/modals/ModalFooter'
 import TextField from '@/components/widgets/TextField'
 import TextareaField from '@/components/widgets/TextareaField'
@@ -54,33 +67,42 @@ import TextareaField from '@/components/widgets/TextareaField'
 export default {
   name: 'edit-sequence-modal',
   mixins: [modalMixin],
+
   components: {
+    MetadataField,
     ModalFooter,
     TextField,
     TextareaField
   },
 
-  props: [
-    'onConfirmClicked',
-    'text',
-    'active',
-    'cancelRoute',
-    'isError',
-    'isLoading',
-    'isLoadingStay',
-    'isSuccess',
-    'sequenceToEdit',
-    'errorText'
-  ],
+  props: {
+    active: {
+      type: Boolean,
+      default: false
+    },
+    isError: {
+      type: Boolean,
+      default: false
+    },
+    isLoading: {
+      type: Boolean,
+      default: false
+    },
+    sequenceToEdit: {
+      type: Object,
+      default: () => {}
+    }
+  },
 
-  data () {
+  data() {
     if (this.sequenceToEdit && this.sequenceToEdit.id) {
       return {
         form: {
           id: this.sequenceToEdit.id,
           name: this.sequenceToEdit.name,
           description: this.sequenceToEdit.description,
-          production_id: this.sequenceToEdit.project_id
+          production_id: this.sequenceToEdit.project_id,
+          data: this.sequenceToEdit.data || {}
         },
         sequenceSuccessText: ''
       }
@@ -90,7 +112,7 @@ export default {
           id: '',
           name: '',
           description: '',
-          fps: ''
+          data: {}
         },
         sequenceSuccessText: ''
       }
@@ -98,28 +120,25 @@ export default {
   },
 
   computed: {
-    ...mapGetters([
-      'currentProduction'
-    ])
+    ...mapGetters(['sequenceMetadataDescriptors'])
   },
 
   methods: {
-    ...mapActions([
-    ]),
+    ...mapActions([]),
 
-    runConfirmation () {
+    runConfirmation() {
       this.confirmClicked()
     },
 
-    confirmClicked () {
+    confirmClicked() {
       this.$emit('confirm', this.form)
     },
 
-    isEditing () {
+    isEditing() {
       return this.sequenceToEdit && this.sequenceToEdit.id
     },
 
-    resetForm () {
+    resetForm() {
       this.sequenceSuccessText = ''
       if (!this.isEditing()) {
         this.form.id = null
@@ -129,22 +148,25 @@ export default {
         this.form = {
           id: this.sequenceToEdit.id,
           name: this.sequenceToEdit.name,
-          description: this.sequenceToEdit.description
+          description: this.sequenceToEdit.description,
+          data: this.sequenceToEdit.data || {}
         }
       }
     }
   },
 
-  mounted () {
-    this.resetForm()
+  mounted() {
+    if (this.active) {
+      this.resetForm()
+    }
   },
 
   watch: {
-    active () {
+    active() {
       this.resetForm()
     },
 
-    sequenceToEdit () {
+    sequenceToEdit() {
       this.resetForm()
     }
   }

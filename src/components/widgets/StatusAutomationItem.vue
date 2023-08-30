@@ -1,53 +1,51 @@
 <template>
-<div
-  class="status-automation flexrow"
->
-  <span class="flexrow-item entity-type">
-    {{ statusAutomation.entity_type }}
-  </span>
-  <span class="in-task-type flexrow-item">
-    <task-type-name
-      class="in-task-type flexrow-item"
-      :task-type="getTaskType(statusAutomation.in_task_type_id)"
-    />
-  </span>
-  <span class="in-task-status flexrow-item">
-    <task-status-name
-      :entry="getTaskStatus(statusAutomation.in_task_status_id)"
-      v-if="statusAutomation.in_field_type !== 'ready_for'"
-    />
-  </span>
-  <span class="flexrow-item trigger-type">
-    changes {{
-      statusAutomation.out_field_type === 'ready_for'
-      ? 'ready for to'
-      : 'task status for'
-    }}
-  </span>
-  <span
-    class="out-task-type flexrow-item"
-  >
-    <task-type-name
-      :task-type="getTaskType(statusAutomation.out_task_type_id)"
-    />
-  </span>
-  <span
-    class="flexrow-item"
-    v-if="statusAutomation.out_field_type === 'status'"
-  >
-    to
-  </span>
-  <span class="out-task-status flexrow-item">
-    <task-status-name
-      :entry="getTaskStatus(statusAutomation.out_task_status_id)"
+  <div class="status-automation flexrow">
+    <span class="flexrow-item entity-type">
+      {{ statusAutomation.entity_type }}
+    </span>
+    <span class="in-task-type flexrow-item">
+      <task-type-name
+        class="in-task-type flexrow-item"
+        :task-type="getTaskType(statusAutomation.in_task_type_id)"
+      />
+    </span>
+    <span class="in-task-status flexrow-item">
+      <task-status-name
+        :entry="getTaskStatus(statusAutomation.in_task_status_id)"
+        v-if="statusAutomation.in_field_type !== 'ready_for'"
+      />
+    </span>
+    <span class="flexrow-item trigger-type">
+      changes
+      {{
+        statusAutomation.out_field_type === 'ready_for'
+          ? 'ready for to'
+          : 'task status for'
+      }}
+    </span>
+    <span class="out-task-type flexrow-item">
+      <task-type-name
+        :task-type="getTaskType(statusAutomation.out_task_type_id)"
+      />
+    </span>
+    <span
+      class="flexrow-item"
       v-if="statusAutomation.out_field_type === 'status'"
-    />
-  </span>
-</div>
+    >
+      to
+    </span>
+    <span class="out-task-status flexrow-item">
+      <task-status-name
+        :entry="getTaskStatus(statusAutomation.out_task_status_id)"
+        v-if="statusAutomation.out_field_type === 'status'"
+      />
+    </span>
+  </div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
+import { pluralizeEntityType } from '@/lib/path'
 import TaskTypeName from '@/components/widgets/TaskTypeName'
 import TaskStatusName from '@/components/cells/TaskStatusName'
 
@@ -74,19 +72,15 @@ export default {
   },
 
   computed: {
-    ...mapGetters([
-      'isCurrentUserClient',
-      'getTaskStatus',
-      'getTaskType'
-    ]),
+    ...mapGetters(['isCurrentUserClient', 'getTaskStatus', 'getTaskType']),
 
-    statusAutomationPath () {
+    statusAutomationPath() {
       const route = {
         name: 'status-automation',
         params: {
           production_id: this.productionId,
           status_automation_id: this.statusAutomation.id,
-          type: this.$tc(this.statusAutomation.for_entity.toLowerCase(), 2)
+          type: pluralizeEntityType(this.statusAutomation.for_entity)
         }
       }
 
@@ -97,12 +91,10 @@ export default {
       }
       return route
     }
-
   },
 
   methods: {
-    ...mapActions([
-    ])
+    ...mapActions([])
   }
 }
 </script>
@@ -128,7 +120,7 @@ export default {
 }
 
 .out-task-status {
-min-width: 100px;
+  min-width: 100px;
 }
 
 .trigger-type {

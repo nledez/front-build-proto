@@ -7,8 +7,7 @@
       <table class="datatable">
         <thead class="datatable-head">
           <tr class="datatable-row-header">
-            <th class="thumbnail">
-            </th>
+            <th class="thumbnail"></th>
             <th class="type">
               {{ $t('entities.preview_files.task_type') }}
             </th>
@@ -35,16 +34,14 @@
           </tr>
         </thead>
       </table>
-      <table class="datatable" style="overflow: auto;">
+      <table class="datatable" style="overflow: auto">
         <tbody class="datatable-body">
           <tr
             :key="previewFile.id"
             class="datatable-row"
             v-for="previewFile in previewFiles"
           >
-            <td
-              class="thumbnail"
-            >
+            <td class="thumbnail">
               <entity-thumbnail
                 class="preview-thumbnail"
                 :preview-file-id="previewFile.id"
@@ -83,6 +80,7 @@
                 class="button flexrow-item"
                 :href="getDownloadPath(previewFile.id)"
                 :title="$t('playlists.actions.download_file')"
+                v-if="!isCurrentUserArtist"
               >
                 <download-icon class="icon is-small" />
               </a>
@@ -117,7 +115,7 @@ export default {
     TaskTypeName
   },
 
-  data () {
+  data() {
     return {
       isLoading: false,
       previewFiles: []
@@ -131,7 +129,7 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     if (!this.entity) return
     this.reset()
   },
@@ -139,6 +137,7 @@ export default {
   computed: {
     ...mapGetters([
       'currentProduction',
+      'isCurrentUserArtist',
       'personMap',
       'taskMap',
       'taskTypeMap'
@@ -146,24 +145,23 @@ export default {
   },
 
   methods: {
-    ...mapActions([
-      'getEntityPreviewFiles'
-    ]),
+    ...mapActions(['getEntityPreviewFiles']),
 
-    getTaskType (previewFile) {
+    getTaskType(previewFile) {
       const task = this.taskMap.get(previewFile.task_id)
       return this.taskTypeMap.get(task.task_type_id)
     },
 
-    getDownloadPath (previewFileId) {
+    getDownloadPath(previewFileId) {
       const type = this.isMovie ? 'movies' : 'pictures'
-      return `/api/${type}/originals/preview-files/` +
-             `${previewFileId}/download`
+      return (
+        `/api/${type}/originals/preview-files/` + `${previewFileId}/download`
+      )
     },
 
     renderFileSize,
 
-    reset () {
+    reset() {
       this.isLoading = true
       this.getEntityPreviewFiles(this.entity.id)
         .then(previewFiles => {
@@ -179,7 +177,7 @@ export default {
   },
 
   watch: {
-    entity () {
+    entity() {
       if (this.entity) this.reset()
     }
   }
@@ -191,19 +189,38 @@ export default {
   overflow-y: auto;
 }
 
-.thumbnail { padding-top: 10px; width: 80px; }
-.type {  width: 150px; }
-.revision { width: 80px; }
-.original-name { width: 300px; }
-.extension { width: 80px; }
-.size { width: 50px; }
-.status { width: 80px; }
-.download { width: 40px; }
+.thumbnail {
+  padding-top: 10px;
+  width: 80px;
+}
+.type {
+  width: 150px;
+}
+.revision {
+  width: 80px;
+}
+.original-name {
+  width: 300px;
+}
+.extension {
+  width: 80px;
+}
+.size {
+  width: 50px;
+}
+.status {
+  width: 80px;
+}
+.download {
+  width: 40px;
+}
 
 .preview-files {
   overflow-y: auto;
 }
-.dark .preview-files.wrapper { background: transparent; }
+.dark .preview-files.wrapper {
+  background: transparent;
+}
 
 .preview-thumbnail {
   cursor: pointer;

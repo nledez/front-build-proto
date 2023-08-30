@@ -1,7 +1,6 @@
 <template>
   <div class="columns">
     <div class="column">
-
       <template v-if="remainingTaskTypes.length > 0">
         <div class="flexrow mt1 mb1 add-task-type">
           <combobox-task-type
@@ -19,88 +18,67 @@
         </div>
       </template>
 
-      <p v-if="errors.delete || errors.scheduleTimeUpdate" class="error mt1 mb1">
+      <p
+        v-if="errors.delete || errors.scheduleTimeUpdate"
+        class="error mt1 mb1"
+      >
         {{ $t('productions.edit_error') }}
       </p>
 
-      <div
-        class="box"
-        v-if="isEmpty(currentProduction.task_types)"
-      >
+      <div class="box" v-if="isEmpty(currentProduction.task_types)">
         {{ $t('settings.production.empty_list') }}
       </div>
 
-      <template
-        v-for="(taskListObject, index) in [assetTaskTypes, shotTaskTypes, editTaskTypes]"
+      <div
         v-else
+        v-for="(taskListObject, index) in taskTypeGroups"
+        :key="index"
       >
-        <div
-          :key="index"
-        >
-          <h2 class="section-title">
-            {{ taskListObject.title }}
-          </h2>
-          <table
-            class="datatable list"
-            v-if="taskListObject.list.length > 0"
+        <h2 class="section-title">
+          {{ taskListObject.title }}
+        </h2>
+        <table class="datatable list" v-if="taskListObject.list.length > 0">
+          <thead>
+            <tr>
+              <th class="name">
+                {{ $t('task_types.fields.name') }}
+              </th>
+              <!--th class="start-date">
+                {{ $t('productions.fields.start_date') }}
+              </th>
+              <th class="end-date">
+                {{ $t('productions.fields.end_date') }}
+              </th-->
+              <th class="remove"></th>
+            </tr>
+          </thead>
+          <draggable
+            v-model="taskListObject.list"
+            draggable=".task-type"
+            class="datatable-body"
+            tag="tbody"
+            @end="updatePriorities(taskListObject.list)"
           >
-            <thead>
-              <tr>
-                <th class="name">
-                  {{ $t('task_types.fields.name') }}
-                </th>
-                <th class="start-date">
-                  {{ $t('productions.fields.start_date') }}
-                </th>
-                <th class="end-date">
-                  {{ $t('productions.fields.end_date') }}
-                </th>
-                <th class="remove"></th>
-              </tr>
-            </thead>
-            <draggable
-              v-model="taskListObject.list"
-              draggable=".task-type"
-              class="datatable-body"
-              tag="tbody"
-              @end="updatePriorities(taskListObject.list)"
-            >
-              <production-task-type
-                class="task-type"
-                :key="taskTypeData.taskType.id"
-                :task-type="taskTypeData.taskType"
-                :schedule-item="taskTypeData.scheduleItem"
-                @date-changed="onDateChanged"
-                @remove="removeTaskType"
-                v-for="taskTypeData in taskListObject.list"
-              />
-            </draggable>
-          </table>
-        </div>
-      </template>
+            <production-task-type
+              class="task-type"
+              :key="taskTypeData.taskType.id"
+              :task-type="taskTypeData.taskType"
+              :schedule-item="taskTypeData.scheduleItem"
+              @date-changed="onDateChanged"
+              @remove="removeTaskType"
+              v-for="taskTypeData in taskListObject.list"
+            />
+          </draggable>
+        </table>
+      </div>
     </div>
-
-    <!--div class="column is-2 episode-span-column hidden">
-      <text-field
-        ref="episodesSpanField"
-        type="number"
-        :label="$t('productions.fields.episode_span')"
-        :disabled="loading.episode_span"
-        @enter="editEpisodeSpan"
-        v-focus
-        v-model="episode_span"
-        v-if="currentProduction && currentProduction.id && isTVShow"
-      />
-      <p v-if="errors.episode_span" class="error mt1">
-        {{ $t('productions.edit_error') }}
-      </p>
-    </div-->
   </div>
 </template>
 <script>
 import draggable from 'vuedraggable'
 import moment from 'moment'
 import { mapGetters, mapActions } from 'vuex'
+import func from '@/lib/func'
 import { sortByName, sortTaskTypes } from '@/lib/sorting'
 import { formatFullDate } from '@/lib/time'
 
@@ -116,11 +94,13 @@ export default {
     ProductionTaskType
   },
 
-  data () {
+  data() {
     return {
       assetTaskTypes: { list: [] },
       editTaskTypes: { list: [] },
       episode_span: 0,
+      episodeTaskTypes: { list: [] },
+      sequenceTaskTypes: { list: [] },
       shotTaskTypes: { list: [] },
       taskTypeId: '',
       loading: {
@@ -136,7 +116,7 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     if (this.remainingTaskTypes.length > 0) {
       this.taskTypeId = this.remainingTaskTypes[0].id
     }
@@ -147,6 +127,9 @@ export default {
       this.loadAllScheduleItems(this.currentProduction)
         .then(() => {
           this.resetDisplayedTaskTypes()
+        })
+        .catch(err => {
+          console.error(err)
         })
     }
   },
@@ -159,17 +142,44 @@ export default {
       'productionAssetTaskTypes',
       'productionShotTaskTypes',
       'productionEditTaskTypes',
+      'productionSequenceTaskTypes',
+      'productionEpisodeTaskTypes',
       'taskStatusMap',
       'taskTypeMap',
       'taskTypes',
       'isTVShow'
     ]),
 
-    remainingTaskTypes () {
+    remainingTaskTypes() {
       return sortByName(
-        this.taskTypes
-          .filter(t => !this.currentProduction.task_types.includes(t.id))
+        this.taskTypes.filter(
+          t => !this.currentProduction.task_types.includes(t.id)
+        )
       )
+    },
+
+    isAssetsOnly() {
+      return this.currentProduction.production_type === 'assets'
+    },
+
+    isShotsOnly() {
+      return this.currentProduction.production_type === 'shots'
+    },
+
+    taskTypeGroups() {
+      let groups = []
+      if (!this.isShotsOnly) {
+        groups.push(this.assetTaskTypes)
+      }
+      if (!this.isAssetsOnly) {
+        groups = groups.concat([
+          this.shotTaskTypes,
+          this.editTaskTypes,
+          this.sequenceTaskTypes,
+          this.episodeTaskTypes
+        ])
+      }
+      return groups
     }
   },
 
@@ -186,17 +196,37 @@ export default {
       'saveScheduleItem'
     ]),
 
-    isEmpty (list) {
+    isEmpty(list) {
       return !list || list.length === 0
     },
 
-    resetDisplayedTaskTypes () {
-      this.resetAssetTaskTypes()
-      this.resetShotTaskTypes()
-      this.resetEditTaskTypes()
+    resetDisplayedTaskTypes() {
+      /*
+        Return an object with the following structure:
+        {
+          title: 'title of the first column of the tab (Assets or short)',
+          list:  [{taskTypes, scheduleItem}]
+          // A list of objects that represents a couple of taskType and their
+          linked scheduleItem.
+        }
+      */
+      ;['Asset', 'Shot', 'Sequence', 'Episode', 'Edit'].forEach(type => {
+        const arr = this[`production${type}TaskTypes`]
+        let list = sortTaskTypes([...arr], this.currentProduction)
+        list = list.map(taskType => {
+          return {
+            taskType,
+            scheduleItem: this.getScheduleItemForTaskType(taskType)
+          }
+        })
+        this[`${type.toLowerCase()}TaskTypes`] = {
+          title: this.$t(`${type.toLowerCase()}s.title`),
+          list
+        }
+      })
     },
 
-    getScheduleItemForTaskType (taskType) {
+    getScheduleItemForTaskType(taskType) {
       const item = this.currentScheduleItems.find(
         scheduleItem => scheduleItem.task_type_id === taskType.id
       ) || {
@@ -206,21 +236,17 @@ export default {
       return item
     },
 
-    async addTaskType () {
-      await this.addTaskTypeToProduction(
-        {
-          taskTypeId: this.taskTypeId,
-          priority: this.assetTaskTypes.length
-        }
-      )
-      await this.createScheduleItem(
-        {
-          startDate: moment(),
-          endDate: moment(),
-          project_id: this.currentProduction.id,
-          task_type_id: this.taskTypeId
-        }
-      )
+    async addTaskType() {
+      await this.addTaskTypeToProduction({
+        taskTypeId: this.taskTypeId,
+        priority: this.assetTaskTypes.length
+      })
+      await this.createScheduleItem({
+        startDate: moment(),
+        endDate: moment(),
+        project_id: this.currentProduction.id,
+        task_type_id: this.taskTypeId
+      })
       if (this.remainingTaskTypes.length > 0) {
         this.taskTypeId = this.remainingTaskTypes[0].id
       } else {
@@ -229,7 +255,7 @@ export default {
       this.resetDisplayedTaskTypes()
     },
 
-    async removeTaskType ({ taskType, scheduleItem }) {
+    async removeTaskType({ taskType, scheduleItem }) {
       this.errors.delete = false
       try {
         await this.removeTaskTypeFromProduction(taskType.id)
@@ -250,69 +276,7 @@ export default {
       this.resetDisplayedTaskTypes()
     },
 
-    /*
-      Return an object with the following structure:
-      {
-        title: 'title of the first column of the tab (Assets or short)',
-        list:  [{taskTypes, scheduleItem}]
-        // A list of objects that represents a couple of taskType and their
-        linked scheduleItem.
-      }
-    */
-    resetAssetTaskTypes () {
-      const list = sortTaskTypes(
-        [...this.productionAssetTaskTypes], this.currentProduction
-      ).map(taskType => {
-        return {
-          taskType,
-          scheduleItem: this.getScheduleItemForTaskType(taskType)
-        }
-      })
-      this.assetTaskTypes = {
-        title: this.$t('assets.title'),
-        list
-      }
-    },
-
-    /*
-      Return an object with the following structure:
-      {
-        title: 'title of the first column of the tab (Assets or short)',
-        list:  [{taskTypes, scheduleItem}]
-        // A list of objects that represents a couple of taskType and their
-        linked scheduleItem }
-    */
-    resetShotTaskTypes () {
-      const list = sortTaskTypes(
-        [...this.productionShotTaskTypes], this.currentProduction
-      ).map(taskType => {
-        return {
-          taskType,
-          scheduleItem: this.getScheduleItemForTaskType(taskType)
-        }
-      })
-      this.shotTaskTypes = {
-        title: this.$t('shots.title'),
-        list
-      }
-    },
-
-    resetEditTaskTypes () {
-      const list = sortTaskTypes(
-        [...this.productionEditTaskTypes], this.currentProduction
-      ).map(taskType => {
-        return {
-          taskType,
-          scheduleItem: this.getScheduleItemForTaskType(taskType)
-        }
-      })
-      this.editTaskTypes = {
-        title: this.$t('edits.title'),
-        list
-      }
-    },
-
-    async editEpisodeSpan () {
+    async editEpisodeSpan() {
       this.loading.episode_span = true
       this.errors.episode_span = false
       try {
@@ -327,7 +291,7 @@ export default {
       this.loading.episode_span = false
     },
 
-    async onDateChanged (scheduleItem) {
+    async onDateChanged(scheduleItem) {
       this.errors.scheduleTimeUpdate = false
       try {
         await this.saveScheduleItem(scheduleItem)
@@ -337,17 +301,17 @@ export default {
       }
     },
 
-    async savePriorities (forms) {
+    async savePriorities(forms) {
       const now = new Date().getTime()
       this.lastCall = this.lastCall || 0
       if (now - this.lastCall > 1000 && !this.isSaving) {
         this.lastCall = now
         this.isSaving = true
-        await Promise.all(forms.map(
-          async (form) => {
+        await func.runPromiseAsSeries(
+          forms.map(async form => {
             return await this.editTaskTypeLink(form)
-          }
-        ))
+          })
+        )
         this.isSaving = false
         if (this.newSaveCall) {
           await this.savePriorities(forms)
@@ -360,7 +324,7 @@ export default {
       }
     },
 
-    async updatePriorities (taskTypes) {
+    async updatePriorities(taskTypes) {
       const forms = []
       taskTypes.forEach((item, index) => {
         index += 1
@@ -378,7 +342,7 @@ export default {
 
   watch: {
     currentProduction: {
-      handler () {
+      handler() {
         this.episode_span = this.currentProduction.episode_span
         this.loadAllScheduleItems(this.currentProduction)
         this.resetDisplayedTaskTypes()
@@ -412,7 +376,7 @@ td p {
 }
 
 .column {
-  max-width: 800px;
+  max-width: 400px;
 }
 
 td.name {
@@ -449,5 +413,9 @@ td ::v-deep p.control.flexrow {
   margin-bottom: 1em;
   margin-top: 2em;
   text-transform: uppercase;
+}
+
+h2 {
+  border: 0;
 }
 </style>

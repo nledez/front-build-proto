@@ -1,57 +1,55 @@
 <template>
-<div class="data-list">
-  <table-info
-    :is-loading="isLoading"
-    :is-error="isLoadingError"
-  />
+  <div class="data-list">
+    <table-info :is-loading="isLoading" :is-error="isLoadingError" />
 
-  <div class="aggregated-time-spents">
-    <div
-      :key="projectId"
-      class="by-project"
-      v-for="projectId in Object.keys(projects)"
-    >
-      <production-name
-        :production="{
-          id: projectId,
-          name: projectNames[projectId]
-        }"
-        v-if="projectNames[projectId]"
-      />
-
+    <div class="aggregated-time-spents">
       <div
-        :key="taskTypeId"
-        class="by-task-type-id"
-        v-for="taskTypeId in Object.keys(projects[projectId])"
+        :key="projectId"
+        class="by-project"
+        v-for="projectId in Object.keys(projects)"
       >
-        <task-type-name :task-type="taskTypeMap.get(taskTypeId)" />
+        <production-name
+          :production="{
+            id: projectId,
+            name: projectNames[projectId]
+          }"
+          v-if="projectNames[projectId]"
+        />
 
-        <div class="table-body">
-          <table class="datatable">
-            <tbody class="datatable-body">
-              <tr
-                :key="task.id"
-                class="by-task-type-id datatable-row"
-                v-for="task in projects[projectId][taskTypeId]"
-              >
-                <router-link :to="getTaskPath(task)">
-                  <td class="name">
+        <div
+          :key="taskTypeId"
+          class="by-task-type-id"
+          v-for="taskTypeId in Object.keys(projects[projectId])"
+        >
+          <task-type-name :task-type="taskTypeMap.get(taskTypeId)" />
+
+          <div class="table-body">
+            <table class="datatable">
+              <tbody class="datatable-body">
+                <tr
+                  :key="task.id"
+                  class="by-task-type-id datatable-row"
+                  v-for="task in projects[projectId][taskTypeId]"
+                >
+                  <router-link :to="getTaskPath(task)">
+                    <td class="name">
                       {{ task.name }}
-                  </td>
-                  <td class="duration">{{ task.duration / 60 }}</td>
-                </router-link>
-              </tr>
-            </tbody>
-          </table>
+                    </td>
+                    <td class="duration">{{ task.duration / 60 }}</td>
+                  </router-link>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { mapGetters } from 'vuex'
+import { firstBy } from 'thenby'
 
 import { sortByName } from '@/lib/sorting'
 import { getTaskPath } from '@/lib/path'
@@ -61,7 +59,7 @@ import TableInfo from '@/components/widgets/TableInfo'
 import TaskTypeName from '@/components/widgets/TaskTypeName'
 
 export default {
-  name: 'timespent-task-list',
+  name: 'time-spent-task-list',
 
   components: {
     TableInfo,
@@ -69,7 +67,7 @@ export default {
     TaskTypeName
   },
 
-  data () {
+  data() {
     return {
       projectNames: {}
     }
@@ -91,16 +89,13 @@ export default {
   },
 
   computed: {
-    ...mapGetters([
-      'currentProduction',
-      'lastProductionScreen',
-      'productionMap',
-      'taskTypeMap'
-    ]),
+    ...mapGetters(['productionMap', 'taskTypeMap']),
 
-    projects () {
+    projects() {
       const projects = {}
-      this.tasks.forEach((task) => {
+      const tasks = [...this.tasks].sort(firstBy('project_name'))
+
+      tasks.forEach(task => {
         if (!projects[task.project_id]) projects[task.project_id] = {}
         if (!projects[task.project_id][task.task_type_id]) {
           projects[task.project_id][task.task_type_id] = []
@@ -123,8 +118,8 @@ export default {
         })
       })
 
-      Object.keys(projects).forEach((projectId) => {
-        Object.keys(projects[projectId]).forEach((taskTypeId) => {
+      Object.keys(projects).forEach(projectId => {
+        Object.keys(projects[projectId]).forEach(taskTypeId => {
           projects[projectId][taskTypeId] = sortByName(
             projects[projectId][taskTypeId]
           )
@@ -136,25 +131,28 @@ export default {
   },
 
   methods: {
-    ...mapActions([
-    ]),
-
-    getTaskPath (task) {
+    getTaskPath(task) {
       const project = this.productionMap.get(task.project_id)
+      if (!project || project.project_status_name === 'Closed') {
+        return ''
+      }
       const isTVShow = project.production_type === 'tvshow'
       const episode = { id: project.first_episode_id }
       return getTaskPath(task, null, isTVShow, episode, this.taskTypeMap)
     },
 
-    onBodyScroll (event, position) {
+    onBodyScroll(event, position) {
       this.$refs.headerWrapper.style.left = `-${position.scrollLeft}px`
     }
   },
 
   watch: {
-    tasks () {
+    tasks() {
       this.projectNames = this.tasks.reduce((projectNames, task) => {
-        projectNames[task.project_id] = task.project_name
+        const production = this.productionMap.get(task.project_id)
+        const suffix =
+          production?.project_status_name === 'Closed' ? ' (closed)' : ''
+        projectNames[task.project_id] = task.project_name + suffix
         return projectNames
       }, {})
     }

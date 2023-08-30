@@ -47,6 +47,7 @@ import Sequences from '@/components/pages/Sequences'
 import Shot from '@/components/pages/Shot'
 import Task from '@/components/pages/Task'
 import Team from '@/components/pages/Team'
+import TeamSchedule from '@/components/pages/TeamSchedule'
 import Timesheets from '@/components/pages/Timesheets'
 import TaskStatus from '@/components/pages/TaskStatus'
 import TaskTypes from '@/components/pages/TaskTypes'
@@ -65,12 +66,11 @@ const ADMIN_PAGES = [
   'productions',
   'task-status',
   'task-types',
-  'main-schedule',
+  'team-schedule',
   'settings'
 ]
 
 export const routes = [
-
   {
     path: '',
     component: Main,
@@ -82,20 +82,21 @@ export const routes = [
         firefox: '>31',
         edge: '>90',
         vivaldi: '>2.8',
-        opera: '>22'
+        opera: '>22',
+        safari: '>9'
       })
       if (!isValidBrowser) {
         return next({ name: 'wrong-browser' })
       }
 
-      auth.requireAuth(to, from, (nextPath) => {
+      auth.requireAuth(to, from, nextPath => {
         if (nextPath) {
           next(nextPath)
         } else {
           timezone.setTimezone()
           lang.setLocale()
           if (store.state.productions.openProductions.length === 0) {
-            init((err) => {
+            init(err => {
               if (err) {
                 next({ name: 'server-down' })
               } else {
@@ -125,7 +126,7 @@ export const routes = [
     component: Main,
 
     beforeEnter: (to, from, next) => {
-      auth.requireAuth(to, from, (nextPath) => {
+      auth.requireAuth(to, from, nextPath => {
         if (nextPath) {
           next(nextPath)
         } else {
@@ -289,6 +290,12 @@ export const routes = [
       },
 
       {
+        path: '/team-schedule',
+        component: TeamSchedule,
+        name: 'team-schedule'
+      },
+
+      {
         path: '/timesheets',
         component: Timesheets,
         name: 'timesheets',
@@ -407,9 +414,7 @@ export const routes = [
         path: 'todos',
         component: Todos,
         name: 'todos',
-        children: [
-          { path: ':tab', component: Todos, name: 'todos-tab' }
-        ]
+        children: [{ path: ':tab', component: Todos, name: 'todos-tab' }]
       },
 
       {
@@ -587,8 +592,7 @@ export const routes = [
             name: 'new-asset'
           },
           {
-            path:
-            'edit/:asset_id',
+            path: 'edit/:asset_id',
             component: Assets,
             name: 'edit-asset'
           },
@@ -1028,7 +1032,7 @@ export const routes = [
     name: 'reset-password'
   },
   {
-    path: '/reset-change-password/:token',
+    path: '/reset-change-password',
     component: ResetChangePassword,
     name: 'reset-change-password'
   },

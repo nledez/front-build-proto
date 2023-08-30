@@ -1,13 +1,22 @@
 // Utility suite for copy pasting annotations or text.
 
 let annotationClipboard = []
+let castingClipboard = []
 
 export default {
-  copyAnnotations (annotations) {
+  copyAnnotations(annotations) {
     annotationClipboard = annotations
   },
 
-  pasteAnnotations () {
+  pasteAnnotations() {
     return annotationClipboard
+  },
+
+  copyCasting(casting) {
+    castingClipboard = casting
+  },
+
+  pasteCasting() {
+    return castingClipboard
   }
 }

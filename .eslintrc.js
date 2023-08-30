@@ -2,24 +2,27 @@ module.exports = {
   root: true,
   env: {
     node: true,
-    'jest/globals': true
+    es2021: true
   },
-  plugins: ['jest'],
   extends: [
+    'eslint:recommended',
     'plugin:vue/essential',
-    '@vue/standard'
+    'plugin:prettier/recommended'
   ],
   rules: {
     'no-console': 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+    'no-unused-vars': 'off',
+    'vue/multi-word-component-names': 'off',
     'vue/no-use-v-if-with-v-for': 'off',
-    'jest/no-disabled-tests': 'warn',
-    'jest/no-focused-tests': 'error',
-    'jest/no-identical-title': 'error',
-    'jest/prefer-to-have-length': 'warn',
-    'jest/valid-expect': 'error'
+    'prefer-const': [
+      'error',
+      {
+        destructuring: 'all'
+      }
+    ]
   },
-  parserOptions: {
-    parser: 'babel-eslint'
+  globals: {
+    Canny: true
   }
 }

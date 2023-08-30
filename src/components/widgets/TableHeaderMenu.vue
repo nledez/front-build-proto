@@ -1,26 +1,18 @@
 <template>
   <div class="header-menu hidden">
-    <div
-      @click="$emit('minimize-clicked')"
-    >
+    <div @click="$emit('minimize-clicked')">
       <span v-if="isMinimized">
         {{ $t('main.maximize') }}
       </span>
       <span v-else>{{ $t('main.minimize') }}</span>
     </div>
-    <div
-      @click="$emit('sort-by-clicked')"
-    >
-      {{ $t('main.sort_by')}}
+    <div @click="$emit('sort-by-clicked')">
+      {{ $t('main.sort_by') }}
     </div>
-    <div
-      @click="$emit('select-column')"
-    >
-      {{ $t('main.select_column')}}
+    <div @click="$emit('select-column')">
+      {{ $t('main.select_column') }}
     </div>
-    <div
-      @click="$emit('toggle-stick')"
-    >
+    <div @click="$emit('toggle-stick')">
       <template v-if="isSticked">
         {{ $t('main.unstick') }}
       </template>
@@ -33,7 +25,7 @@
       @click="$emit('delete-all-clicked')"
       v-if="isEditAllowed"
     >
-      {{ $t('main.delete_all')}}
+      {{ $t('main.delete_all') }}
     </div>
   </div>
 </template>
@@ -59,19 +51,16 @@ export default {
     }
   },
 
-  data () {
-    return {
-    }
+  data() {
+    return {}
   },
 
   computed: {
-    ...mapGetters([
-    ])
+    ...mapGetters([])
   },
 
   methods: {
-    ...mapActions([
-    ])
+    ...mapActions([])
   }
 }
 </script>
@@ -85,9 +74,11 @@ export default {
 .header-menu {
   position: absolute;
   background: white;
-  width: 118px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
   box-shadow: 0px 2px 6px $light-grey;
   top: 90px;
+  width: 118px;
   z-index: 100;
 }
 

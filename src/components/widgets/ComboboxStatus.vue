@@ -1,67 +1,63 @@
 <template>
-<div
-  :class="{
-    field: withMargin,
-    'field--narrow': narrow
-  }"
->
-  <label class="label" v-if="label.length > 0">
-    {{ label }}
-  </label>
   <div
-    class="status-combo"
+    :class="{
+      field: withMargin,
+      'field--narrow': narrow
+    }"
   >
-    <div
-      class="flexrow"
-      @click="toggleStatusList"
-    >
-      <div
-        class="selected-status-line flexrow-item"
-      >
-        <span
-          class="tag"
-          :style="{
-            background: backgroundColor(currentStatus),
-            color: color(currentStatus)
+    <label class="label" v-if="label.length > 0">
+      {{ label }}
+    </label>
+    <div class="status-combo" :style="comboStyles">
+      <div class="flexrow" @click="toggleStatusList">
+        <div class="selected-status-line flexrow-item">
+          <span
+            class="tag"
+            :style="{
+              background: backgroundColor(currentStatus),
+              color: color(currentStatus)
+            }"
+            v-if="currentStatus"
+          >
+            {{ currentStatus.short_name }}
+          </span>
+        </div>
+        <chevron-down-icon
+          :class="{
+            'down-icon': true,
+            'flexrow-item': true,
+            white: colorOnly
           }"
-          v-if="currentStatus"
-        >
-          {{ currentStatus.short_name }}
-        </span>
+        />
       </div>
-      <chevron-down-icon class="down-icon flexrow-item"/>
-    </div>
-    <div
-      ref="select"
-      :class="{
-        'select-input': true,
-        'open-top': openTop
-      }"
-      v-if="showStatusList"
-    >
       <div
-        :key="status.id"
-        class="status-line"
-        @click="selectStatus(status)"
-        v-for="status in taskStatusList"
+        ref="select"
+        :class="{
+          'select-input': true,
+          'open-top': openTop
+        }"
+        v-if="showStatusList"
       >
-        <span
-          class="tag"
-          :style="{
-            background: backgroundColor(status),
-            color: color(status)
-          }"
+        <div
+          :key="status.id"
+          class="status-line"
+          @click="selectStatus(status)"
+          v-for="status in taskStatusList"
         >
-          {{ status.short_name }}
-        </span>
+          <span
+            class="tag"
+            :style="{
+              background: backgroundColor(status),
+              color: color(status)
+            }"
+          >
+            {{ status.short_name }}
+          </span>
+        </div>
       </div>
     </div>
+    <combobox-mask :displayed="showStatusList" @click="toggleStatusList" />
   </div>
-  <combobox-mask
-    :displayed="showStatusList"
-    @click="toggleStatusList"
-  />
-</div>
 </template>
 
 <script>
@@ -79,13 +75,17 @@ export default {
     ComboboxMask
   },
 
-  data () {
+  data() {
     return {
       showStatusList: false
     }
   },
 
   props: {
+    colorOnly: {
+      default: false,
+      type: Boolean
+    },
     label: {
       default: '',
       type: String
@@ -116,17 +116,14 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     this.selectedTaskStatus = this.taskStatus
   },
 
   computed: {
-    ...mapGetters([
-      'isDarkTheme',
-      'taskStatusMap'
-    ]),
+    ...mapGetters(['isDarkTheme', 'taskStatusMap']),
 
-    currentStatus () {
+    currentStatus() {
       if (this.value) {
         return this.taskStatusMap.get(this.value)
       } else if (this.addPlaceholder) {
@@ -137,24 +134,43 @@ export default {
       } else {
         return this.taskStatusList[0]
       }
+    },
+
+    comboStyles() {
+      return {
+        background: this.colorOnly
+          ? this.backgroundColor(this.currentStatus)
+          : this.isDarkTheme
+          ? '#36393F'
+          : '#FEFEFE',
+        color: this.colorOnly ? this.color(this.currentStatus) : 'inherit',
+        'border-top-left-radius': this.colorOnly ? '20px' : '10px',
+        'border-top-right-radius': this.colorOnly ? '0px' : '10px',
+        'border-bottom-left-radius': this.showStatusList
+          ? '0'
+          : this.colorOnly
+          ? '20px'
+          : '10px',
+        'border-bottom-right-radius': this.showStatusList
+          ? '0'
+          : this.colorOnly
+          ? '0px'
+          : '10px'
+      }
     }
   },
 
   methods: {
-    selectStatus (status) {
+    selectStatus(status) {
       this.$emit('input', status.id)
       this.showStatusList = false
     },
 
-    backgroundColor (taskStatus) {
-      const isTodo = taskStatus.name === 'Todo'
-      if (
-        (!taskStatus || isTodo) &&
-        !this.isDarkTheme
-      ) {
+    backgroundColor(taskStatus) {
+      if ((!taskStatus || taskStatus.name === 'Todo') && !this.isDarkTheme) {
         return '#ECECEC'
       } else if (
-        (!taskStatus || isTodo) &&
+        (!taskStatus || taskStatus.name === 'Todo') &&
         this.isDarkTheme
       ) {
         return '#5F626A'
@@ -165,16 +181,15 @@ export default {
       }
     },
 
-    color (taskStatus) {
-      const isTodo = taskStatus.name === 'Todo'
-      if ((!taskStatus || !isTodo) || this.isDarkTheme) {
+    color(taskStatus) {
+      if (!taskStatus || taskStatus.name !== 'Todo' || this.isDarkTheme) {
         return 'white'
       } else {
         return '#333'
       }
     },
 
-    toggleStatusList () {
+    toggleStatusList() {
       this.showStatusList = !this.showStatusList
     }
   }
@@ -196,7 +211,7 @@ export default {
 }
 
 .status-combo {
-  background: $white;
+  background: var(--background);
   min-width: 120px;
   width: 120px;
   border: 1px solid $light-grey-light;
@@ -215,6 +230,7 @@ export default {
 .field--narrow .status-combo {
   padding: 0;
   margin: 0;
+  border-radius: 0;
 }
 
 .selected-status-line {
@@ -246,10 +262,12 @@ export default {
   width: 120px;
   position: absolute;
   border: 1px solid $light-grey-light;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
   z-index: 300;
   margin-left: -1px;
   max-height: 180px;
-  top: 33px;
+  top: 38px;
   left: 0;
   overflow-y: auto;
 
@@ -259,7 +277,18 @@ export default {
   }
 }
 
+.field--narrow {
+  .select-input {
+    top: 33px;
+  }
+}
+
 .field .label {
   padding-top: 5px;
+}
+
+.down-icon.white {
+  color: $white;
+  margin-right: 0.8em;
 }
 </style>

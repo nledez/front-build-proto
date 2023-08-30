@@ -3,27 +3,26 @@
  */
 import { mapGetters } from 'vuex'
 
-import { formatDate, formatFullDate, formatSimpleDate } from '@/lib/time'
+import {
+  formatDate,
+  formatFullDate,
+  formatSimpleDate,
+  minutesToDays
+} from '@/lib/time'
 
 export const formatListMixin = {
+  created() {},
 
-  created () {
-  },
+  mounted() {},
 
-  mounted () {
-  },
-
-  beforeDestroy () {
-  },
+  beforeDestroy() {},
 
   computed: {
-    ...mapGetters([
-      'organisation'
-    ])
+    ...mapGetters(['organisation'])
   },
 
   methods: {
-    formatBoolean (booleanValue) {
+    formatBoolean(booleanValue) {
       return booleanValue ? this.$t('main.yes') : this.$t('main.no')
     },
 
@@ -31,35 +30,47 @@ export const formatListMixin = {
     formatFullDate,
     formatSimpleDate,
 
-    formatDuration (duration) {
-      if (duration) {
-        return (duration / 60 / this.organisation.hours_by_day).toLocaleString(
-          'fullwide', { maximumFractionDigits: 2 }
-        )
-      } else {
+    formatDuration(minutes, toLocale = true) {
+      if (!minutes) {
         return 0
       }
+      const days = minutesToDays(this.organisation, minutes)
+      if (toLocale) {
+        return days.toLocaleString('fullwide', {
+          maximumFractionDigits: 2
+        })
+      }
+      return days
     },
 
-    formatPriority (priority) {
+    formatPriority(priority) {
       let label = priority + ''
       if (priority === 0) {
         label = 'normal'
       } else if (priority === 1) {
-        label = this.$('tasks.priority.high')
+        label = this.$t('tasks.priority.high')
       } else if (priority === 2) {
-        label = this.$('tasks.priority.very_high')
+        label = this.$t('tasks.priority.very_high')
       } else if (priority === 3) {
-        label = this.$('tasks.priority.emergency')
+        label = this.$t('tasks.priority.emergency')
       }
       return label
     },
 
-    sanitizeInteger (value) {
+    sanitizeInteger(value) {
       let val = 0
       if (typeof value === 'string') {
         value = value.replace(/\D/g, '')
         if (value && value.length > 0) val = parseInt(value) || 0
+      }
+      return val
+    },
+
+    sanitizeIntegerLight(value) {
+      let val = null
+      if (typeof value === 'string') {
+        value = value.replace(/\D/g, '')
+        if (value && value.length > 0) val = parseInt(value) || null
       }
       return val
     }

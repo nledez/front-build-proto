@@ -1,152 +1,114 @@
 <template>
-<div :class="{
-  'modal': true,
-  'is-active': active
-}">
-  <div class="modal-background" @click="$emit('cancel')" ></div>
+  <div
+    :class="{
+      modal: true,
+      'is-active': active
+    }"
+  >
+    <div class="modal-background" @click="$emit('cancel')"></div>
 
-  <div class="modal-content">
-    <div class="box">
+    <div class="modal-content">
+      <div class="box">
+        <h1 class="title" v-if="assetToEdit && this.assetToEdit.id">
+          {{ $t('assets.edit_title') }} {{ assetToEdit.name }}
+        </h1>
+        <h1 class="title" v-else>
+          {{ $t('assets.new_asset') }}
+        </h1>
 
-      <h1 class="title" v-if="assetToEdit && this.assetToEdit.id">
-        {{ $t("assets.edit_title") }} {{ assetToEdit.name }}
-      </h1>
-      <h1 class="title" v-else>
-        {{ $t("assets.new_asset") }}
-      </h1>
-
-      <form v-on:submit.prevent>
-        <combobox
-          :label="$t('assets.fields.type')"
-          :options="productionAssetTypeOptions"
-          v-model="form.entity_type_id"
-        />
-        <combobox
-          :label="$t('assets.fields.episode')"
-          :options="episodeOptions"
-          v-model="form.source_id"
-          v-if="isTVShow"
-        />
-        <text-field
-          ref="nameField"
-          :label="$t('assets.fields.name')"
-          v-model="form.name"
-          @enter="runConfirmation"
-          v-focus
-        />
-        <textarea-field
-          ref="descriptionField"
-          :label="$t('assets.fields.description')"
-          v-model="form.description"
-          v-focus
-        />
-        <div
-          :key="descriptor.id"
-          v-for="descriptor in assetMetadataDescriptors"
-        >
-          <div
-            class="field"
-            v-if="descriptor.choices.length > 0 && getDescriptorChecklistValues(descriptor).length > 0"
-            :key="`${descriptor.id}-checklist-wrapper`"
-          >
-            <label
-              class="label"
-              v-html="descriptor.name"
-              :key="`${descriptor.id}-${descriptor.name}`"
-            />
-            <div
-              class="checkbox-wrapper"
-              v-for="(option, i) in getDescriptorChecklistValues(descriptor)"
-              :key="`${descriptor.id}-${i}-${option.text}-wrapper`"
-            >
-              <input
-                type="checkbox"
-                :checked="getMetadataChecklistValues(descriptor, assetToEdit)[option.text]"
-                @change="event => onMetadataCheckboxChanged(descriptor, option.text, event)"
-                :id="`${descriptor.id}-${i}-${option.text}-checkbox`"
-              />
-              <label
-                class="checkbox-label"
-                :for="`${descriptor.id}-${i}-${option.text}-checkbox`"
-              >
-                <span>{{ option.text }}</span>
-              </label>
-            </div>
-          </div>
+        <form v-on:submit.prevent>
           <combobox
-            v-else-if="descriptor.choices.length > 0"
-            :label="descriptor.name"
-            :options="getDescriptorChoicesOptions(descriptor)"
-            v-model="form.data[descriptor.field_name]"
+            :label="$t('assets.fields.type')"
+            :options="productionAssetTypeOptions"
+            v-model="form.entity_type_id"
+          />
+          <combobox
+            :label="$t('assets.fields.episode')"
+            :options="episodeOptions"
+            v-model="form.source_id"
+            v-if="isTVShow"
           />
           <text-field
-            :label="descriptor.name"
-            v-model="form.data[descriptor.field_name]"
+            ref="nameField"
+            :label="$t('assets.fields.name')"
+            v-model="form.name"
             @enter="runConfirmation"
-            v-else
+            v-focus
           />
-        </div>
-      </form>
+          <textarea-field
+            ref="descriptionField"
+            :label="$t('assets.fields.description')"
+            v-model="form.description"
+            v-focus
+          />
+          <metadata-field
+            :key="descriptor.id"
+            :descriptor="descriptor"
+            :entity="assetToEdit"
+            @enter="runConfirmation"
+            v-model="form.data[descriptor.field_name]"
+            v-for="descriptor in assetMetadataDescriptors"
+            v-if="assetToEdit"
+          />
+        </form>
 
-      <div class="has-text-right">
-        <a
-          :class="{
-            button: true,
-            'is-primary': true,
-            'is-loading': isLoadingStay
-          }"
-          :disabled="this.form.name && this.form.name.length === 0"
-          @click="confirmAndStayClicked"
-          v-if="!assetToEdit || !assetToEdit.id"
-        >
-          {{ $t("main.confirmation_and_stay") }}
-        </a>
-        <a
-          :class="{
-            button: true,
-            'is-primary': true,
-            'is-loading': isLoading
-          }"
-          :disabled="this.form.name && this.form.name.length === 0"
-          @click="confirmClicked"
-        >
-          {{ $t("main.confirmation") }}
-        </a>
-        <button
-          class="button is-link"
-          @click="$emit('cancel')"
-        >
-          {{ $t("main.close") }}
-        </button>
-        <p class="error has-text-right info-message" v-if="isError">
-          {{ $t("assets.edit_fail") }}
-        </p>
-        <p class="success has-text-right info-message" v-if="isSuccess">
-          {{ assetSuccessText }}
-        </p>
+        <div class="has-text-right">
+          <a
+            :class="{
+              button: true,
+              'is-primary': true,
+              'is-loading': isLoadingStay
+            }"
+            :disabled="this.form.name && this.form.name.length === 0"
+            @click="confirmAndStayClicked"
+            v-if="!assetToEdit || !assetToEdit.id"
+          >
+            {{ $t('main.confirmation_and_stay') }}
+          </a>
+          <a
+            :class="{
+              button: true,
+              'is-primary': true,
+              'is-loading': isLoading
+            }"
+            :disabled="this.form.name && this.form.name.length === 0"
+            @click="confirmClicked"
+          >
+            {{ $t('main.confirmation') }}
+          </a>
+          <button class="button is-link" @click="$emit('cancel')">
+            {{ $t('main.close') }}
+          </button>
+          <p class="error has-text-right info-message" v-if="isError">
+            {{ $t('assets.edit_fail') }}
+          </p>
+          <p class="success has-text-right info-message" v-if="isSuccess">
+            {{ assetSuccessText }}
+          </p>
+        </div>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import { modalMixin } from '@/components/modals/base_modal'
-import { descriptorMixin } from '@/components/mixins/descriptors'
 
+import Combobox from '@/components/widgets/Combobox'
+import MetadataField from '@/components/widgets/MetadataField'
 import TextField from '@/components/widgets/TextField'
 import TextareaField from '@/components/widgets/TextareaField'
-import Combobox from '@/components/widgets/Combobox'
 
 export default {
   name: 'edit-asset-modal',
-  mixins: [descriptorMixin, modalMixin],
+  mixins: [modalMixin],
 
   components: {
+    Combobox,
+    MetadataField,
     TextField,
-    TextareaField,
-    Combobox
+    TextareaField
   },
 
   props: {
@@ -177,14 +139,10 @@ export default {
     assetToEdit: {
       type: Object,
       default: () => {}
-    },
-    errorText: {
-      type: String,
-      default: ''
     }
   },
 
-  data () {
+  data() {
     return {
       form: {
         name: '',
@@ -196,6 +154,11 @@ export default {
     }
   },
 
+  mounted() {
+    this.resetForm()
+    this.assetSuccessText = ''
+  },
+
   computed: {
     ...mapGetters([
       'assets',
@@ -205,14 +168,14 @@ export default {
       'currentProduction',
       'currentEpisode',
       'episodes',
+      'isTVShow',
       'productionAssetTypes',
       'productionAssetTypeOptions',
-      'isTVShow',
       'openProductions'
     ]),
 
-    episodeOptions () {
-      const options = this.episodes.map((episode) => {
+    episodeOptions() {
+      const options = this.episodes.map(episode => {
         return {
           label: episode.name,
           value: episode.id
@@ -226,27 +189,10 @@ export default {
     }
   },
 
-  mounted () {
-    this.resetForm()
-    this.assetSuccessText = ''
-  },
-
   methods: {
-    ...mapActions([
-    ]),
+    ...mapActions([]),
 
-    onMetadataCheckboxChanged (descriptor, option, event) {
-      var values = {}
-      try {
-        values = JSON.parse(this.form.data[descriptor.field_name])
-      } catch {
-        values = {}
-      }
-      values[option] = event.target.checked
-      this.form.data[descriptor.field_name] = JSON.stringify(values)
-    },
-
-    runConfirmation () {
+    runConfirmation() {
       if (this.form.name.length > 0) {
         if (this.isEditing()) {
           this.confirmClicked()
@@ -256,40 +202,56 @@ export default {
       }
     },
 
-    focusName () {
+    focusName() {
       this.$refs.nameField.focus()
     },
 
-    confirmAndStayClicked () {
+    confirmAndStayClicked() {
       this.$emit('confirmAndStay', this.form)
     },
 
-    confirmClicked () {
+    confirmClicked() {
       this.$emit('confirm', this.form)
     },
 
-    isEditing () {
+    isEditing() {
       return this.assetToEdit && this.assetToEdit.id
     },
 
-    resetForm () {
+    getEntityTypeIdDefaultValue() {
+      let entityTypeId = this.assetToEdit.asset_type_id
+      if (!entityTypeId) {
+        entityTypeId = this.productionAssetTypeOptions[0].value
+      }
+      const isInOptions = this.productionAssetTypeOptions.find(
+        option => option.value === entityTypeId
+      )
+      if (!isInOptions) {
+        entityTypeId = this.productionAssetTypeOptions[0].value
+      }
+      return entityTypeId
+    },
+
+    resetForm() {
       if (!this.isEditing()) {
-        if (!this.form.entity_type_id &&
-            this.productionAssetTypes.length > 0) {
-          this.form.entity_type_id = this.productionAssetTypes[0].id
+        if (!this.form.entity_type_id && this.productionAssetTypes.length > 0) {
+          this.form.entity_type_id = this.productionAssetTypeOptions[0].value
         }
         if (this.openProductions.length > 0) {
-          this.form.project_id =
-            this.currentProduction ? this.currentProduction.id : ''
+          this.form.project_id = this.currentProduction
+            ? this.currentProduction.id
+            : ''
         }
         this.form.name = ''
         this.form.description = ''
-        this.form.source_id =
-          this.currentEpisode ? this.currentEpisode.id : null
+        this.form.source_id = this.currentEpisode
+          ? this.currentEpisode.id
+          : null
         this.form.data = {}
       } else {
+        const entityTypeId = this.getEntityTypeIdDefaultValue()
         this.form = {
-          entity_type_id: this.assetToEdit.asset_type_id,
+          entity_type_id: entityTypeId,
           project_id: this.assetToEdit.project_id,
           name: this.assetToEdit.name,
           description: this.assetToEdit.description,
@@ -301,11 +263,11 @@ export default {
   },
 
   watch: {
-    assetToEdit () {
+    assetToEdit() {
       this.resetForm()
     },
 
-    assetCreated () {
+    assetCreated() {
       if (this.isEditing()) {
         this.assetSuccessText = this.$t('assets.edit_success', {
           name: this.assetCreated
@@ -317,7 +279,7 @@ export default {
       }
     },
 
-    active () {
+    active() {
       this.assetSuccessText = ''
       this.resetForm()
       if (this.active) {
@@ -343,20 +305,4 @@ export default {
 .info-message {
   margin-top: 1em;
 }
-
-.checkbox-wrapper {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.checkbox-label {
-  display: inline-flex;
-  position: relative;
-  padding-left: .5rem;
-  padding-right: .5rem;
-  white-space: normal;
-  cursor: pointer;
-}
-
 </style>

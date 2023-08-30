@@ -1,16 +1,18 @@
 <template>
-  <div :class="{
-    'modal': true,
-    'is-active': active
-  }">
-    <div class="modal-background" @click="$emit('cancel')" ></div>
+  <div
+    :class="{
+      modal: true,
+      'is-active': active
+    }"
+  >
+    <div class="modal-background" @click="$emit('cancel')"></div>
     <div class="modal-content">
       <div class="box">
         <h1 class="title" v-if="departmentToEdit && departmentToEdit.id">
-          {{ $t("departments.edit_title") }} {{ departmentToEdit.name }}
+          {{ $t('departments.edit_title') }} {{ departmentToEdit.name }}
         </h1>
         <h1 class="title" v-else>
-          {{ $t("departments.new_departments") }}
+          {{ $t('departments.new_departments') }}
         </h1>
         <form v-on:submit.prevent>
           <text-field
@@ -55,17 +57,26 @@ export default {
     TextField
   },
 
-  props: [
-    'onConfirmClicked',
-    'text',
-    'active',
-    'cancelRoute',
-    'isLoading',
-    'isError',
-    'departmentToEdit'
-  ],
+  props: {
+    active: {
+      type: Boolean,
+      default: false
+    },
+    isError: {
+      type: Boolean,
+      default: false
+    },
+    isLoading: {
+      type: Boolean,
+      default: false
+    },
+    departmentToEdit: {
+      type: Object,
+      default: () => {}
+    }
+  },
 
-  data () {
+  data() {
     return {
       form: {
         name: '',
@@ -76,23 +87,19 @@ export default {
   },
 
   computed: {
-    ...mapGetters([
-      'assetTypes',
-      'assetTypeStatusOptions'
-    ])
+    ...mapGetters(['assetTypes', 'assetTypeStatusOptions'])
   },
 
   methods: {
-    ...mapActions([
-    ]),
+    ...mapActions([]),
 
-    runConfirmation () {
+    runConfirmation() {
       this.$emit('confirm', this.form)
     }
   },
 
   watch: {
-    active () {
+    active() {
       if (this.active) {
         setTimeout(() => {
           this.$refs.nameField.focus()
@@ -100,7 +107,7 @@ export default {
       }
     },
 
-    departmentToEdit () {
+    departmentToEdit() {
       if (this.departmentToEdit) {
         this.form.name = this.departmentToEdit.name
         this.form.color = this.departmentToEdit.color

@@ -2,18 +2,14 @@
  * Utilities to deal with full screen state.
  */
 export const fullScreenMixin = {
+  created() {},
 
-  created () {
-  },
+  mounted() {},
 
-  mounted () {
-  },
-
-  beforeDestroy () {
-  },
+  beforeDestroy() {},
 
   computed: {
-    isFullScreenEnabled () {
+    isFullScreenEnabled() {
       return !!(
         document.fullscreenEnabled ||
         document.mozFullScreenEnabled ||
@@ -26,9 +22,9 @@ export const fullScreenMixin = {
   },
 
   methods: {
-    isFullScreen () {
+    isFullScreen() {
       return !!(
-        document.fullScreen ||
+        document.fullscreen ||
         document.webkitIsFullScreen ||
         document.mozFullScreen ||
         document.msFullscreenElement ||
@@ -36,7 +32,7 @@ export const fullScreenMixin = {
       )
     },
 
-    documentExitFullScreen () {
+    documentExitFullScreen() {
       if (document.exitFullscreen) {
         document.exitFullscreen()
       } else if (document.mozCancelFullScreen) {
@@ -48,7 +44,7 @@ export const fullScreenMixin = {
       }
     },
 
-    documentSetFullScreen (element) {
+    documentSetFullScreen(element) {
       if (element.requestFullscreen) {
         element.requestFullscreen()
       } else if (element.mozRequestFullScreen) {

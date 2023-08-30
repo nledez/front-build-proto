@@ -1,116 +1,125 @@
 <template>
-<td
-  ref="cell"
-  :class="{
-    disabled: disabled,
-    validation: selectable,
-    selected: selectable & selected
-  }"
-  :style="{
-    'border-left': isBorder ? '1px solid ' + column.color : 'none',
-    'background': isBorder ? getBackground() : 'transparent',
-    'left': left
-  }"
-  @mouseover="onMouseOver"
-  @mouseout="onMouseOut"
-  @click="onClick"
->
-  <div
-    class="wrapper"
-    v-if="!minimized"
+  <td
+    ref="cell"
+    :class="{
+      canceled,
+      disabled: disabled,
+      validation: selectable,
+      selected: selectable & selected
+    }"
+    :style="{
+      'border-left': isBorder ? '1px solid ' + column.color : 'none',
+      background: isBorder ? getBackground() : 'transparent',
+      left: left
+    }"
+    @mouseover="onMouseOver"
+    @mouseout="onMouseOut"
+    @click="onClick"
   >
-    <span
-      v-if="task"
-    >
+    <div class="wrapper" v-if="!minimized">
+      <span v-if="task">
+        <span
+          class="tag"
+          :title="taskStatus.name"
+          :style="{
+            background: backgroundColor,
+            color: color
+          }"
+        >
+          {{ taskStatus.short_name }}
+        </span>
+        <span
+          :class="{
+            priority: true,
+            high: task.priority === 1,
+            veryhigh: task.priority === 2,
+            emergency: task.priority === 3
+          }"
+          :title="formatPriority(task.priority)"
+          v-if="
+            !isCurrentUserClient &&
+            !disabled &&
+            task.priority > 0 &&
+            !this.taskStatus.is_done
+          "
+        >
+          {{ priority }}
+        </span>
+        <span
+          class="casting-status"
+          :title="castingTitle"
+          v-if="!isCurrentUserClient && isCastingReady"
+        >
+          <img src="@/assets/icons/casting-ready.png" width="20" />
+        </span>
+        <span
+          class="casting-status"
+          :title="castingTitle"
+          v-else-if="!isCurrentUserClient"
+        >
+          &nbsp; &nbsp; &nbsp; &nbsp;
+        </span>
+      </span>
+      <span> </span>
+      <span
+        class="avatar has-text-centered"
+        :title="personMap.get(personId).full_name"
+        :style="{
+          background: personMap.get(personId).color,
+          width: '20px',
+          height: '20px',
+          'font-size': '10px'
+        }"
+        :key="'avatar-' + personId"
+        v-for="personId in assignees"
+        v-if="isAssignees && !isCurrentUserClient && !disabled"
+      >
+        <img
+          v-lazy="avatarPath(personId)"
+          :key="avatarKey(personId)"
+          width="20"
+          height="20"
+          v-if="personMap.get(personId).has_avatar"
+        />
+        <span v-else>
+          {{ personMap.get(personId).initials }}
+        </span>
+      </span>
+      <span class="subscribed" v-if="task && task.is_subscribed">
+        <eye-icon size="0.8x" />
+      </span>
+    </div>
+    <div class="wrapper" v-else>
       <span
         class="tag"
-        :title="taskStatus.name"
         :style="{
           background: backgroundColor,
           color: color
         }"
       >
-        {{ taskStatus.short_name }}
-      </span>
-      <span class="priority" v-if="!isCurrentUserClient">
-        {{ priority }}
-      </span>
-      <span
-        class="casting-status"
-        :title="castingTitle"
-        v-if="!isCurrentUserClient && isCastingReady"
-      >
-        <img src="@/assets/icons/casting-ready.png" width=20>
-      </span>
-      <span
-        class="casting-status"
-        :title="castingTitle"
-        v-else-if="!isCurrentUserClient"
-      >
-        &nbsp;
-        &nbsp;
-        &nbsp;
         &nbsp;
       </span>
-    </span>
-    <span>
-    </span>
-    <span
-      class="avatar has-text-centered"
-      :title="personMap.get(personId).full_name"
-      :style="{
-        background: personMap.get(personId).color,
-        width: '20px',
-        height: '20px',
-        'font-size': '10px'
-      }"
-      :key="'avatar-' + personId"
-      v-for="personId in assignees"
-      v-if="isAssignees && !isCurrentUserClient"
-    >
-      <img
-        v-lazy="avatarPath(personId)"
-        :key="avatarKey(personId)"
-        width="20"
-        height="20"
-        v-if="personMap.get(personId).has_avatar"
-      />
-      <span v-else>
-        {{ personMap.get(personId).initials }}
-      </span>
-    </span>
-  </div>
-  <div
-    class="wrapper"
-    v-else
-  >
-    <span
-      class="tag"
-      :style="{
-        background: backgroundColor,
-        color: color
-      }"
-    >
-      &nbsp;
-    </span>
-  </div>
-</td>
+    </div>
+  </td>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import colors from '@/lib/colors'
 
+import { EyeIcon } from 'vue-feather-icons'
+
 export default {
   name: 'validation-cell',
 
-  data () {
+  data() {
     return {
       task: null
     }
   },
 
   components: {
+    EyeIcon
   },
 
   props: {
@@ -181,13 +190,17 @@ export default {
     sticked: {
       default: false,
       type: Boolean
+    },
+    canceled: {
+      default: false,
+      type: Boolean
     }
   },
 
-  mounted () {
+  mounted() {
     if (this.taskTest) {
       this.task = this.taskTest
-    } else if (this.entity && this.column) {
+    } else if (this.entity && this.column && this.entity.validations) {
       this.task = this.taskMap.get(this.entity.validations.get(this.column.id))
     }
     this.changeStyleBasedOnSelected()
@@ -202,7 +215,7 @@ export default {
       'taskStatusMap'
     ]),
 
-    assignees () {
+    assignees() {
       if (this.task) {
         return this.task.assignees
       } else {
@@ -210,7 +223,7 @@ export default {
       }
     },
 
-    backgroundColor () {
+    backgroundColor() {
       const isTodo = this.taskStatus.name === 'Todo'
       if (isTodo && !this.isDarkTheme) {
         return '#ECECEC'
@@ -225,7 +238,7 @@ export default {
       }
     },
 
-    color () {
+    color() {
       const isTodo = this.taskStatus.name === 'Todo'
       if (!isTodo || this.isDarkTheme) {
         return 'white'
@@ -234,11 +247,8 @@ export default {
       }
     },
 
-    priority () {
-      if (
-        this.task.priority &&
-        !this.taskStatus.is_done
-      ) {
+    priority() {
+      if (this.task.priority && !this.taskStatus.is_done) {
         if (this.task.priority === 3) {
           return '!!!'
         } else if (this.task.priority === 2) {
@@ -253,7 +263,7 @@ export default {
       }
     },
 
-    taskStatus () {
+    taskStatus() {
       if (this.task) {
         const taskStatusId = this.task.task_status_id
         return this.taskStatusMap ? this.taskStatusMap.get(taskStatusId) : {}
@@ -264,10 +274,9 @@ export default {
   },
 
   methods: {
-    ...mapActions([
-    ]),
+    ...mapActions([]),
 
-    getBackground () {
+    getBackground() {
       if (this.disabled) {
         return 'rgba(0, 0, 0, 0.15)'
       } else if (this.isBorder && !this.sticked) {
@@ -278,38 +287,40 @@ export default {
       }
     },
 
-    onMouseOver (event) {
+    onMouseOver(event) {
       if (this.selectable && !this.selected) {
         const background = this.isDarkTheme ? '#6E70CA' : '#CFD1FF'
         this.changeStyle(background)
       }
     },
 
-    onMouseOut (event) {
+    onMouseOut(event) {
       if (this.selectable && !this.selected) {
         const background = this.getBackground()
         this.changeStyle(background)
       }
     },
 
-    onClick (event) {
+    onClick(event) {
       if (this.clickable) {
         this.select(event)
       }
     },
 
-    changeStyle (background) {
-      const border =
-        this.isBorder ? '1px solid ' + this.column.color : 'none'
-      this.$refs.cell.style =
-        `border-left: ${border}; background: ${background}; left: ${this.left}`
+    changeStyle(background) {
+      const border = this.isBorder ? '1px solid ' + this.column.color : 'none'
+      if (this.$refs.cell) {
+        this.$refs.cell.style = `border-left: ${border}; background: ${background}; left: ${this.left}`
+      }
     },
 
-    select (event) {
+    select(event) {
       const isUserClick = event.isUserClick !== false
       if (this.selectable) {
-        if (this.$refs.cell &&
-            this.$refs.cell.className.indexOf('selected') < 0) {
+        if (
+          this.$refs.cell &&
+          this.$refs.cell.className.indexOf('selected') < 0
+        ) {
           this.$emit('select', {
             entity: this.entity,
             column: this.column,
@@ -335,7 +346,7 @@ export default {
       }
     },
 
-    avatarPath (personId) {
+    avatarPath(personId) {
       const person = this.personMap.get(personId)
       if (person) {
         return person.avatarPath + '?unique=' + person.uniqueHash
@@ -344,7 +355,7 @@ export default {
       }
     },
 
-    avatarKey (personId) {
+    avatarKey(personId) {
       const person = this.personMap.get(personId)
       if (person) {
         return person.id + '-' + person.uniqueHash
@@ -353,7 +364,7 @@ export default {
       }
     },
 
-    changeStyleBasedOnSelected () {
+    changeStyleBasedOnSelected() {
       if (this.selected) {
         const background = this.isDarkTheme ? '#5E60BA' : '#BFC1FF'
         this.changeStyle(background)
@@ -363,20 +374,35 @@ export default {
         )
         this.changeStyle(background)
       }
+    },
+
+    formatPriority(priority) {
+      let label = priority + ''
+      if (priority === 0) {
+        label = 'normal'
+      } else if (priority === 1) {
+        label = this.$t('tasks.priority.high')
+      } else if (priority === 2) {
+        label = this.$t('tasks.priority.very_high')
+      } else if (priority === 3) {
+        label = this.$t('tasks.priority.emergency')
+      }
+      return label
     }
   },
 
   watch: {
-    selected () {
+    selected() {
       this.changeStyleBasedOnSelected()
     },
 
-    taskTest () {
+    taskTest() {
       if (this.taskTest) {
         this.task = this.taskTest
-      } else if (this.entity) {
-        this.task =
-          this.taskMap.get(this.entity.validations.get(this.column.id))
+      } else if (this.entity && this.entity.validations) {
+        this.task = this.taskMap.get(
+          this.entity.validations.get(this.column.id)
+        )
       }
     }
   }
@@ -386,7 +412,7 @@ export default {
 <style lang="scss" scoped>
 .dark td.selected,
 .dark td.selected.validation:hover {
-  background-color: #8F91EB;
+  background-color: #8f91eb;
 }
 
 .validation {
@@ -431,9 +457,11 @@ span.person-avatar:nth-child(2) {
 }
 
 .tag {
-  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 1px;
   margin-right: 0.1em;
   margin-bottom: 0.3em;
+  text-transform: uppercase;
 }
 
 .priority {
@@ -453,5 +481,34 @@ span.person-avatar:nth-child(2) {
   img {
     width: 12px;
   }
+}
+
+.subscribed {
+  position: absolute;
+  bottom: -10px;
+  right: -5px;
+  color: $grey;
+}
+
+.priority {
+  border-radius: 5px;
+  display: inline-block;
+  color: white;
+  margin-left: 5px;
+  font-weight: bold;
+  min-width: 23px;
+  text-align: center;
+}
+
+.high {
+  background: $yellow;
+}
+
+.veryhigh {
+  background: $orange;
+}
+
+.emergency {
+  background: $red;
 }
 </style>

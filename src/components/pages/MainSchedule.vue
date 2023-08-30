@@ -1,63 +1,58 @@
 <template>
-<div
-  class="columns fixed-page"
->
-  <div
-    class="column main-column"
-  >
-    <div class="flexrow project-dates">
-      <div class="flexrow-item">
-        <label class="label">
-          {{ $t('main.start_date') }}
-        </label>
-        <datepicker
-          wrapper-class="datepicker"
-          input-class="date-input input"
-          :language="locale"
-          :disabled-dates="{ days: [6, 0] }"
-          :monday-first="true"
-          format="yyyy-MM-dd"
-          v-model="selectedStartDate"
-          disabled
+  <div class="columns fixed-page">
+    <div class="column main-column">
+      <div class="flexrow project-dates">
+        <div class="flexrow-item">
+          <label class="label">
+            {{ $t('main.start_date') }}
+          </label>
+          <datepicker
+            wrapper-class="datepicker"
+            input-class="date-input input"
+            :language="locale"
+            :disabled-dates="{ days: [6, 0] }"
+            :monday-first="true"
+            format="yyyy-MM-dd"
+            v-model="selectedStartDate"
+            disabled
+          />
+        </div>
+        <div class="flexrow-item field">
+          <label class="label">
+            {{ $t('main.end_date') }}
+          </label>
+          <datepicker
+            wrapper-class="datepicker"
+            input-class="date-input input"
+            :language="locale"
+            :disabled-dates="{ days: [6, 0] }"
+            :monday-first="true"
+            format="yyyy-MM-dd"
+            v-model="selectedEndDate"
+            disabled
+          />
+        </div>
+        <combobox-number
+          class="flexrow-item zoom-level"
+          :label="$t('schedule.zoom_level')"
+          :options="zoomOptions"
+          v-model="zoomLevel"
         />
       </div>
-      <div class="flexrow-item field">
-        <label class="label">
-          {{ $t('main.end_date') }}
-        </label>
-        <datepicker
-          wrapper-class="datepicker"
-          input-class="date-input input"
-          :language="locale"
-          :disabled-dates="{ days: [6, 0] }"
-          :monday-first="true"
-          format="yyyy-MM-dd"
-          v-model="selectedEndDate"
-          disabled
-        />
-      </div>
-      <combobox-number
-        class="flexrow-item zoom-level"
-        :label="$t('schedule.zoom_level')"
-        :options="zoomOptions"
-        v-model="zoomLevel"
+
+      <schedule
+        :end-date="endDate"
+        :hierarchy="scheduleItems"
+        :is-loading="loading.schedule"
+        :is-error="errors.schedule"
+        :start-date="startDate"
+        :zoom-level="zoomLevel"
+        :hide-man-days="true"
+        @item-changed="onScheduleItemChanged"
+        @root-element-expanded="expandProductionElement"
       />
     </div>
-
-    <schedule
-      :end-date="endDate"
-      :hierarchy="scheduleItems"
-      :is-loading="loading.schedule"
-      :is-error="errors.schedule"
-      :start-date="startDate"
-      :with-milestones="false"
-      :zoom-level="zoomLevel"
-      @item-changed="onScheduleItemChanged"
-      @change-zoom="changeZoom"
-      @root-element-expanded="expandProductionElement"
-    />
   </div>
-</div>
 </template>
 
 <script>
@@ -83,22 +78,23 @@ import ComboboxNumber from '@/components/widgets/ComboboxNumber'
 import Schedule from '@/components/pages/schedule/Schedule'
 
 export default {
-  name: 'production-schedule',
+  name: 'main-schedule',
   components: {
     ComboboxNumber,
     Datepicker,
     Schedule
   },
 
-  data () {
+  data() {
     return {
       endDate: moment().add(6, 'months'),
       scheduleItems: [],
       startDate: moment(),
       selectedStartDate: null,
       selectedEndDate: null,
-      zoomLevel: 2,
+      zoomLevel: 0,
       zoomOptions: [
+        { label: 'Week', value: 0 },
         { label: '1', value: 1 },
         { label: '2', value: 2 },
         { label: '3', value: 3 }
@@ -112,18 +108,14 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     this.reset()
   },
 
   computed: {
-    ...mapGetters([
-      'openProductions',
-      'taskTypeMap',
-      'user'
-    ]),
+    ...mapGetters(['openProductions', 'taskTypeMap', 'user']),
 
-    locale () {
+    locale() {
       if (this.user.locale === 'fr_FR') {
         return fr
       } else {
@@ -133,18 +125,9 @@ export default {
   },
 
   methods: {
-    ...mapActions([
-      'editProduction',
-      'loadScheduleItems',
-      'saveScheduleItem'
-    ]),
+    ...mapActions(['editProduction', 'loadScheduleItems', 'saveScheduleItem']),
 
-    changeZoom (event) {
-      if (event.wheelDelta < 0 && this.zoomLevel > 1) this.zoomLevel--
-      if (event.wheelDelta > 0 && this.zoomLevel < 3) this.zoomLevel++
-    },
-
-    reset () {
+    reset() {
       this.scheduleItems = this.convertScheduleItems(this.openProductions)
       this.startDate = getFirstStartDate(this.scheduleItems)
       this.endDate = getLastEndDate(this.scheduleItems)
@@ -152,8 +135,8 @@ export default {
       this.selectedEndDate = this.endDate.toDate()
     },
 
-    convertScheduleItems (scheduleItems) {
-      return scheduleItems.map((item) => {
+    convertScheduleItems(scheduleItems) {
+      return scheduleItems.map(item => {
         const startDate = getStartDateFromString(item.start_date)
         const endDate = getEndDateFromString(startDate, item.end_date)
         return {
@@ -171,8 +154,8 @@ export default {
       })
     },
 
-    convertTaskTypeScheduleItems (scheduleItems) {
-      return scheduleItems.map((item) => {
+    convertTaskTypeScheduleItems(scheduleItems) {
+      return scheduleItems.map(item => {
         const startDate = getStartDateFromString(item.start_date)
         const endDate = getEndDateFromString(startDate, item.end_date)
         const taskType = this.taskTypeMap.get(item.task_type_id)
@@ -191,22 +174,21 @@ export default {
       })
     },
 
-    expandProductionElement (productionElement) {
+    expandProductionElement(productionElement) {
       if (!productionElement.expanded) {
         productionElement.loading = true
         productionElement.expanded = true
-        this.loadScheduleItems(productionElement)
-          .then((scheduleItems) => {
-            scheduleItems = this.convertTaskTypeScheduleItems(scheduleItems)
-            productionElement.children = scheduleItems
-            productionElement.loading = false
-          })
+        this.loadScheduleItems(productionElement).then(scheduleItems => {
+          scheduleItems = this.convertTaskTypeScheduleItems(scheduleItems)
+          productionElement.children = scheduleItems
+          productionElement.loading = false
+        })
       } else {
         productionElement.expanded = false
       }
     },
 
-    onScheduleItemChanged (item) {
+    onScheduleItemChanged(item) {
       if (item.type !== 'Project') {
         this.saveScheduleItem(item)
       } else {
@@ -219,13 +201,11 @@ export default {
     }
   },
 
-  socket: {
-  },
+  socket: {},
 
-  watch: {
-  },
+  watch: {},
 
-  metaInfo () {
+  metaInfo() {
     return {
       title: `${this.$t('schedule.title_main')} - Kitsu`
     }
@@ -242,7 +222,7 @@ export default {
 }
 
 .project-dates {
-  border-bottom: 1px solid #EEE;
+  border-bottom: 1px solid #eee;
   padding-bottom: 1em;
 
   .field {

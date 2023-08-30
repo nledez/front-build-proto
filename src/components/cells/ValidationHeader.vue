@@ -6,36 +6,30 @@
       'hidden-validation-cell': hiddenColumns[columnId],
       'datatable-row-header': isStick
     }"
-    :style="{'left': left}"
+    :style="{ left: left }"
   >
-    <div
-      class="flexrow validation-content"
-      :style="validationStyle"
-    >
+    <div class="flexrow validation-content" :style="validationStyle">
       <department-name
+        class="department-dot"
         :department="currentDepartment"
         :only-dot="true"
-        :style="{'padding': '0px 0px'}"
+        :style="{ padding: '0px 0px' }"
         v-if="currentDepartment"
       />
       <router-link
         class="flexrow-item datatable-dropdown task-type-name"
-        style="margin-right: 0;"
+        style="margin-right: 0"
         :to="taskTypePath(columnId)"
         v-if="!isCurrentUserClient"
       >
-        {{ !hiddenColumns[columnId]
-        ? taskTypeMap.get(columnId).name
-        : '' }}
+        {{ !hiddenColumns[columnId] ? taskTypeMap.get(columnId).name : '' }}
       </router-link>
       <span
         class="flexrow-item datatable-dropdown task-type-name"
-        style="margin-right: 0;"
+        style="margin-right: 0"
         v-else
       >
-        {{ !hiddenColumns[columnId]
-          ? taskTypeMap.get(columnId).name
-          : '' }}
+        {{ !hiddenColumns[columnId] ? taskTypeMap.get(columnId).name : '' }}
       </span>
 
       <chevron-down-icon
@@ -47,9 +41,7 @@
 </template>
 
 <script>
-import {
-  ChevronDownIcon
-} from 'vue-feather-icons'
+import { ChevronDownIcon } from 'vue-feather-icons'
 import { mapGetters } from 'vuex'
 import DepartmentName from '@/components/widgets/DepartmentName'
 
@@ -83,24 +75,38 @@ export default {
       'taskTypeMap'
     ]),
 
-    currentDepartment () {
-      return this.departmentMap.get(this.taskTypeMap.get(this.columnId).department_id)
+    currentDepartment() {
+      return this.departmentMap.get(
+        this.taskTypeMap.get(this.columnId).department_id
+      )
     }
   },
   methods: {
-    taskTypePath (taskTypeId) {
-      const route = {
-        name: 'task-type',
-        params: {
-          production_id: this.currentProduction.id,
-          task_type_id: taskTypeId,
-          type: this.type
+    taskTypePath(taskTypeId) {
+      const taskType = this.taskTypeMap.get(taskTypeId)
+      let route = {}
+      if (taskType.for_entity === 'Episode') {
+        route = {
+          name: 'episodes-task-type',
+          params: {
+            production_id: this.currentProduction.id,
+            task_type_id: taskTypeId
+          }
         }
-      }
+      } else {
+        route = {
+          name: 'task-type',
+          params: {
+            production_id: this.currentProduction.id,
+            task_type_id: taskTypeId,
+            type: this.type
+          }
+        }
 
-      if (this.isTVShow && this.currentEpisode) {
-        route.name = 'episode-task-type'
-        route.params.episode_id = this.currentEpisode.id
+        if (this.isTVShow && this.currentEpisode) {
+          route.name = 'episode-task-type'
+          route.params.episode_id = this.currentEpisode.id
+        }
       }
 
       return route
@@ -110,7 +116,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-
 th.metadata-descriptor {
   min-width: 120px;
   max-width: 120px;
@@ -120,7 +125,15 @@ th.metadata-descriptor {
 }
 
 .task-type-name {
+  font-size: 1.1em;
   max-width: 95%;
+  text-transform: none;
 }
 
+.header-icon {
+  background: var(--background);
+  border-radius: 50%;
+  height: 18px;
+  padding: 1px;
+}
 </style>

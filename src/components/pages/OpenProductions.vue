@@ -7,8 +7,8 @@
       class="flexrow open-productions-header"
       v-if="!isOpenProductionsLoading && openProductions.length > 0"
     >
+      <img class="flexrow-item" src="../../assets/kitsu.png" width="23" />
       <h1 class="title flexrow-item">
-        <img src="../../assets/kitsu.png" width="23"/>
         {{ $t('productions.home.title') }}
       </h1>
       <div class="filler"></div>
@@ -25,7 +25,6 @@
       class="open-productions-box"
       v-if="!isOpenProductionsLoading && openProductions.length > 0"
     >
-      <img src="">
       <div
         :class="{
           'open-productions-list': true,
@@ -35,11 +34,9 @@
         <div
           class="open-production has-text-centered"
           :key="production.id"
-          v-for="production in openProductions">
-
-          <router-link
-            :to="getPath(production)"
-          >
+          v-for="production in openProductions"
+        >
+          <router-link :to="getPath(production)">
             <div
               class="avatar has-text-centered"
               v-bind:style="{
@@ -68,10 +65,7 @@
           {{ $t('productions.home.empty') }}
         </p>
         <p class="has-text-centered mt1">
-          <button
-            class="button big-button"
-            @click="newProductionPage"
-          >
+          <button class="button big-button" @click="newProductionPage">
             {{ $t('productions.home.create_new') }}
           </button>
         </p>
@@ -94,7 +88,6 @@
       @confirm="confirmEditProduction"
       @cancel="hideNewModal"
     />
-
   </div>
 </template>
 
@@ -113,7 +106,7 @@ export default {
     Spinner
   },
 
-  data () {
+  data() {
     return {
       errors: {
         edit: false
@@ -139,24 +132,22 @@ export default {
   },
 
   methods: {
-    ...mapActions([
-      'newProduction'
-    ]),
+    ...mapActions(['newProduction']),
 
-    generateAvatar (production) {
+    generateAvatar(production) {
       const firstLetter = production.name.length > 0 ? production.name[0] : 'P'
       return firstLetter.toUpperCase()
     },
 
-    getAvatarColor (production) {
+    getAvatarColor(production) {
       return colors.fromString(production.name)
     },
 
-    getPath (production) {
+    getPath(production) {
       return this.sectionPath(production, this.lastProductionScreen)
     },
 
-    sectionPath (production, section) {
+    sectionPath(production, section) {
       const route = {
         name: section,
         params: {
@@ -166,7 +157,7 @@ export default {
       }
       if (production.production_type === 'tvshow') {
         route.name = `episode-${section}`
-        if (section !== 'assets') {
+        if (section !== 'edits') {
           route.params.episode_id = production.first_episode_id
         } else {
           route.params.episode_id = 'all'
@@ -178,11 +169,11 @@ export default {
       return route
     },
 
-    getThumbnailPath (production) {
+    getThumbnailPath(production) {
       return `/api/pictures/thumbnails/projects/${production.id}.png`
     },
 
-    confirmEditProduction (form) {
+    confirmEditProduction(form) {
       this.errors.edit = false
       this.loading.edit = true
       this.newProduction(form)
@@ -190,27 +181,27 @@ export default {
           this.modals.isNewDisplayed = false
           this.loading.edit = false
         })
-        .catch((err) => {
+        .catch(err => {
           console.error(err)
           this.loading.edit = false
           this.errors.edit = true
         })
     },
 
-    newProductionPage () {
+    newProductionPage() {
       this.$router.push({
         name: 'new-production'
       })
     },
 
-    hideNewModal () {
+    hideNewModal() {
       this.modals.isNewDisplayed = false
     }
   },
 
   watch: {},
 
-  metaInfo () {
+  metaInfo() {
     return {
       title: `${this.$t('productions.home.title')} - Kitsu`
     }
@@ -230,7 +221,7 @@ export default {
   }
 
   .open-productions-list {
-    .open-production:hover .avatar{
+    .open-production:hover .avatar {
       box-shadow: 0 0 4px 2px #444;
     }
   }
@@ -243,13 +234,16 @@ export default {
 
 h1.title {
   margin-bottom: 0;
+  font-weight: 400;
   text-transform: uppercase;
+  letter-spacing: 1px;
   color: $grey;
+  font-size: 1.9em;
 }
 
 .is-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill,minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 
   .open-production {
     margin: 2em auto 0 auto;
@@ -288,17 +282,17 @@ h1.title {
   }
 
   .open-production:hover {
-    transition: all .4s ease-in-out;
+    transition: all 0.4s ease-in-out;
     transform: scale(1.1);
   }
 
   .open-production:hover .avatar {
-    transition: all .4s ease-in-out;
+    transition: all 0.4s ease-in-out;
     box-shadow: 0 0 4px 2px var(--box-shadow);
   }
 
   .open-production:hover .production-name {
-    transition: all .4s ease-in-out;
+    transition: all 0.4s ease-in-out;
     transform: scale(1.15);
     text-shadow: 0px 0px 3px var(--box-shadow);
   }
@@ -326,28 +320,28 @@ h1.title {
 }
 
 a.secondary {
-  color: #BBB;
+  color: #bbb;
 }
 
 a.secondary:hover {
-  text-decoration: underline
+  text-decoration: underline;
 }
 
 .new-production-link {
   margin-top: 4em;
 
   a {
-    color: #BBB;
+    color: #bbb;
   }
 }
 
 .open-productions {
-  background: #FAFAFA;
+  background: #fafafa;
 }
 
 .open-productions-box {
   background: white;
-  box-shadow: 0 0 3px 3px #EEE;
+  box-shadow: 0 0 3px 3px #eee;
   border-radius: 3em;
   max-width: 800px;
   margin-left: auto;
@@ -361,6 +355,10 @@ a.secondary:hover {
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
+
+  img {
+    margin-left: 3px;
+  }
 }
 
 .open-productions.page {
@@ -372,10 +370,10 @@ a.secondary:hover {
 .big-button {
   background: $white;
   border: 1px solid $green;
-  box-shadow: 0 0 4px 0 #9C9;
+  box-shadow: 0 0 4px 0 #9c9;
   color: $green;
   margin-top: 1em;
-  transition: all .2s ease-in-out;
+  transition: all 0.2s ease-in-out;
 
   &:hover {
     transform: scale(1.1);

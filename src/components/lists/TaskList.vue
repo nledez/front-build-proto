@@ -1,207 +1,295 @@
 <template>
-<div class="data-list">
-  <div ref="body" class="datatable-wrapper" v-scroll="onBodyScroll">
-    <table class="datatable">
-      <thead ref="thead" class="datatable-head">
-        <tr class="row-header">
-          <th class="thumbnail" ref="th-thumbnail">
-          </th>
-          <th class="asset-type" ref="th-type" v-if="isAssets">
-            {{ $t('tasks.fields.asset_type') }}
-          </th>
-          <th class="sequence" ref="th-type" v-else>
-            {{ $t('tasks.fields.sequence') }}
-          </th>
-          <th class="name" ref="th-name">
-            {{ $t('tasks.fields.entity_name') }}
-          </th>
-          <th class="status" ref="th-status">
-            {{ $t('tasks.fields.task_status') }}
-          </th>
-          <th class="assignees" ref="th-assignees">
-            {{ $t('tasks.fields.assignees') }}
-          </th>
-          <th class="frames" ref="th-frames" v-if="!isAssets">
-            {{ $t('tasks.fields.frames') }}
-          </th>
-          <th
-            ref="th-estimation"
-            class="estimation"
-            :title="$t('main.estimation')"
-          >
-            {{ $t('tasks.fields.estimation').substring(0, 3) }}.
-          </th>
-          <th class="duration" ref="th-duration">
-            {{ $t('tasks.fields.duration').substring(0, 3) }}.
-          </th>
-          <th class="retake-count" ref="th-retake-count">
-            {{ $t('tasks.fields.retake_count') }}
-          </th>
-          <th class="start-date" ref="th-estimation">
-            {{ $t('tasks.fields.start_date') }}
-          </th>
-          <th class="due-date" ref="th-estimation">
-            {{ $t('tasks.fields.due_date') }}
-          </th>
-          <th class="real-start-date" ref="th-status">
-            {{ $t('tasks.fields.real_start_date') }}
-          </th>
-          <th class="real-end-date" ref="th-status">
-            {{ $t('tasks.fields.real_end_date') }}
-          </th>
-          <th class="last-comment-date" ref="th-status">
-            {{ $t('tasks.fields.last_comment_date') }}
-          </th>
-          <th class="empty" ref="">
-            &nbsp;
-          </th>
-        </tr>
-      </thead>
+  <div class="data-list">
+    <div
+      ref="body"
+      class="datatable-wrapper"
+      v-scroll="onBodyScroll"
+      v-if="!isContactSheet"
+    >
+      <table class="datatable">
+        <thead ref="thead" class="datatable-head">
+          <tr class="row-header">
+            <th class="thumbnail" ref="th-thumbnail"></th>
+            <th class="asset-type" ref="th-type" v-if="isAssets">
+              {{ $t('tasks.fields.asset_type') }}
+            </th>
+            <th class="sequence" ref="th-type" v-else-if="!isEpisodes">
+              {{ $t('tasks.fields.sequence') }}
+            </th>
+            <th class="name" ref="th-name">
+              {{ $t('tasks.fields.entity_name') }}
+            </th>
+            <th class="status" ref="th-status">
+              {{ $t('tasks.fields.task_status') }}
+            </th>
+            <th class="assignees" ref="th-assignees">
+              {{ $t('tasks.fields.assignees') }}
+            </th>
+            <th class="frames number-cell" ref="th-frames" v-if="isShots">
+              {{ $t('tasks.fields.frames') }}
+            </th>
+            <th
+              ref="th-estimation"
+              class="estimation number-cell"
+              :title="$t('main.estimation')"
+            >
+              {{ $t('tasks.fields.estimation').substring(0, 3) }}.
+            </th>
+            <th class="duration number-cell" ref="th-duration">
+              {{ $t('tasks.fields.duration').substring(0, 3) }}.
+            </th>
+            <th class="retake-count number-cell" ref="th-retake-count">
+              {{ $t('tasks.fields.retake_count') }}
+            </th>
+            <th class="start-date" ref="th-estimation">
+              {{ $t('tasks.fields.start_date') }}
+            </th>
+            <th class="due-date" ref="th-estimation">
+              {{ $t('tasks.fields.due_date') }}
+            </th>
+            <th class="real-start-date" ref="th-status">
+              {{ $t('tasks.fields.real_start_date') }}
+            </th>
+            <th class="real-end-date" ref="th-status">
+              {{ $t('tasks.fields.real_end_date') }}
+            </th>
+            <th class="last-comment-date" ref="th-status">
+              {{ $t('tasks.fields.last_comment_date') }}
+            </th>
+            <th class="empty" ref="">&nbsp;</th>
+          </tr>
+        </thead>
 
-      <tbody
-        class="datatable-body"
-      >
-        <tr
-          :ref="'task-' + task.id"
-          :key="task.id"
-          :class="{
-            'task-line': true,
-            'datatable-row': true,
-            selected: selectionGrid[task.id]
-          }"
-          @click="selectTask($event, index, task)"
-          v-for="(task, index) in displayedTasks"
-        >
-          <td class="thumbnail flexrow">
-            <entity-thumbnail
+        <tbody class="datatable-body">
+          <tr
+            :ref="'task-' + task.id"
+            :key="task.id"
+            :class="{
+              'task-line': true,
+              'datatable-row': true,
+              selected: selectionGrid[task.id]
+            }"
+            @click="selectTask($event, index, task)"
+            v-for="(task, index) in tasks"
+          >
+            <td class="thumbnail flexrow">
+              <entity-thumbnail
+                class="flexrow-item"
+                :entity="getEntity(task.entity.id)"
+                :width="50"
+                :height="33"
+                :empty-width="50"
+                :empty-height="33"
+                v-if="task.entity"
+              />
+            </td>
+            <td class="asset-type" v-if="isAssets">
+              {{ getEntity(task.entity.id).asset_type_name }}
+            </td>
+            <td class="sequence" v-else-if="!isEpisodes">
+              {{ getEntity(task.entity.id).sequence_name }}
+            </td>
+            <td class="name">
+              {{ getEntity(task.entity.id).name }}
+            </td>
+            <validation-cell
+              class="status unselectable"
+              :task-test="task"
+              :is-border="false"
+              :is-assignees="false"
+              :selectable="false"
+              :is-static="true"
+            />
+            <td class="assignees">
+              <div class="flexrow">
+                <people-avatar-with-menu
+                  class="flexrow-item"
+                  :key="task.id + '-' + personId"
+                  :person="personMap.get(personId)"
+                  :size="30"
+                  :font-size="16"
+                  @unassign="person => onUnassign(task, person)"
+                  v-for="personId in task.assignees"
+                />
+              </div>
+            </td>
+            <td class="frames" v-if="isShots">
+              {{ getEntity(task.entity.id).nb_frames }}
+            </td>
+            <td class="estimation number-cell">
+              <input
+                class="input"
+                min="0"
+                step="any"
+                type="number"
+                :ref="task.id + '-estimation'"
+                :value="formatDuration(task.estimation, false)"
+                @change="updateEstimation($event.target.value)"
+                v-if="isInDepartment(task) && selectionGrid[task.id]"
+              />
+              <span v-else>
+                {{ formatDuration(task.estimation) }}
+              </span>
+            </td>
+            <td
+              :class="{
+                duration: true,
+                'number-cell': true,
+                error: isEstimationBurned(task)
+              }"
+            >
+              {{ formatDuration(task.duration) }}
+            </td>
+            <td class="retake-count number-cell">
+              <span v-for="index in task.retake_count" :key="index">
+                &bull;
+              </span>
+            </td>
+            <td class="start-date">
+              <date-field
+                class="flexrow-item"
+                :with-margin="false"
+                :value="getDate(task.start_date)"
+                :disabled-dates="disabledDates"
+                @input="updateStartDate"
+                v-if="isInDepartment(task) && selectionGrid[task.id]"
+              />
+              <span v-else>
+                {{ formatDate(task.start_date) }}
+              </span>
+            </td>
+            <td class="due-date">
+              <date-field
+                class="flexrow-item"
+                :with-margin="false"
+                :value="getDate(task.due_date)"
+                :disabled-dates="disabledDates"
+                @input="updateDueDate"
+                v-if="isInDepartment(task) && selectionGrid[task.id]"
+              />
+              <span v-else>
+                {{ formatDate(task.due_date) }}
+              </span>
+            </td>
+            <td class="real-start-date">
+              {{ formatDate(task.real_start_date) }}
+            </td>
+            <td class="real-end-date">
+              {{ formatDate(task.end_date) }}
+            </td>
+            <td class="last-comment-date">
+              {{ formatDate(task.last_comment_date) }}
+            </td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      <table-info :is-loading="isLoading" :is-error="isError" />
+    </div>
+    <div
+      class="list-wrapper"
+      v-else-if="tasksByParent && tasksByParent.length > 0 && this.isGrouped"
+    >
+      <div :key="'task-section-' + i" v-for="(taskGroup, i) in tasksByParent">
+        <h2>
+          {{ taskGroup.name }}
+        </h2>
+        <div class="task-grid">
+          <div
+            :class="{
+              'task-card': true,
+              selected: selectionGrid[task.id]
+            }"
+            :key="task.id"
+            @click="selectTask($event, index, task)"
+            v-for="(task, index) in taskGroup.tasks"
+          >
+            <entity-preview
               class="flexrow-item"
               :entity="getEntity(task.entity.id)"
-              :width="50"
-              :height="33"
-              :empty-width="50"
-              :empty-height="33"
+              :height="133"
+              :width="200"
+              :empty-width="200"
+              :empty-height="133"
+              :show-movie="false"
+              no-preview
               v-if="task.entity"
             />
-          </td>
-          <td class="asset-type" v-if="isAssets">
-            {{ getEntity(task.entity.id).asset_type_name }}
-          </td>
-          <td class="sequence" v-else>
-            {{ getEntity(task.entity.id).sequence_name }}
-          </td>
-          <td class="name">
-            {{ getEntity(task.entity.id).name }}
-          </td>
-          <validation-cell
-            class="status unselectable"
-            :task-test="task"
-            :is-border="false"
-            :is-assignees="false"
-            :selectable="false"
-            :is-static="true"
-          />
-          <td class="assignees">
-            <div class="flexrow">
+            <span class="task-name">
+              {{ getTaskName(task) }}
+            </span>
+            <div class="flexrow task-data">
+              <validation-tag class="flexrow-item" :task="task" thin />
+              <div class="filler"></div>
               <people-avatar-with-menu
                 class="flexrow-item"
                 :key="task.id + '-' + personId"
                 :person="personMap.get(personId)"
-                :size="30"
-                :font-size="17"
+                :size="20"
+                :font-size="10"
                 @unassign="person => onUnassign(task, person)"
                 v-for="personId in task.assignees"
               />
             </div>
-          </td>
-          <td class="frames" v-if="!isAssets">
-            {{ getEntity(task.entity.id).nb_frames }}
-          </td>
-          <td class="estimation">
-            <input
-              v-if="isInDepartment(task) && selectionGrid[task.id]"
-              :ref="task.id + '-estimation'"
-              class="input"
-              @change="updateEstimation($event.target.value)"
-              :value="formatDuration(task.estimation)"
-            />
-            <span v-else>
-              {{ formatDuration(task.estimation) }}
-            </span>
-          </td>
-          <td :class="{
-            duration: true,
-            error: isEstimationBurned(task)
-          }">
-            {{ formatDuration(task.duration) }}
-          </td>
-          <td class="retake-count">
-            <span
-              v-for="index in task.retake_count"
-              :key="index"
-            >
-              &bull;
-            </span>
-          </td>
-          <td class="start-date">
-            <date-field
-              class="flexrow-item"
-              :with-margin="false"
-              :value="getDate(task.start_date)"
-              @input="updateStartDate"
-              v-if="isInDepartment(task) && selectionGrid[task.id]"
-            />
-            <span v-else>
-              {{ formatDate(task.start_date) }}
-            </span>
-          </td>
-          <td class="due-date">
-            <date-field
-              class="flexrow-item"
-              :with-margin="false"
-              :value="getDate(task.due_date)"
-              @input="updateDueDate"
-              v-if="isInDepartment(task) && selectionGrid[task.id]"
-            />
-            <span v-else>
-              {{ formatDate(task.due_date) }}
-            </span>
-
-          </td>
-          <td class="real-start-date">
-            {{ formatDate(task.real_start_date) }}
-          </td>
-          <td class="real-end-date">
-            {{ formatDate(task.end_date) }}
-          </td>
-          <td class="last-comment-date">
-            {{ formatDate(task.last_comment_date) }}
-          </td>
-          <td>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <table-info
-      :is-loading="isLoading"
-      :is-error="isError"
-    />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="task-grid list-wrapper" v-else>
+      <div
+        :class="{
+          'task-card': true,
+          selected: selectionGrid[task.id]
+        }"
+        :key="task.id"
+        @click="selectTask($event, index, task)"
+        v-for="(task, index) in displayedTasks"
+      >
+        <entity-preview
+          class="flexrow-item"
+          :entity="getEntity(task.entity.id)"
+          :height="133"
+          :width="200"
+          :empty-width="200"
+          :empty-height="133"
+          :show-movie="false"
+          no-preview
+          v-if="task.entity"
+        />
+        <span class="task-name">
+          {{ getTaskName(task) }}
+        </span>
+        <div class="flexrow task-data">
+          <validation-tag class="flexrow-item" :task="task" thin />
+          <div class="filler"></div>
+          <people-avatar-with-menu
+            class="flexrow-item"
+            :key="task.id + '-' + personId"
+            :person="personMap.get(personId)"
+            :size="20"
+            :font-size="10"
+            @unassign="person => onUnassign(task, person)"
+            v-for="personId in task.assignees"
+          />
+        </div>
+      </div>
+    </div>
+    <p class="has-text-centered nb-tasks" v-if="!isLoading">
+      {{ tasks.length }} {{ $tc('tasks.number', tasks.length) }} ({{
+        formatDuration(timeEstimated)
+      }}
+      {{ $tc('main.days_estimated', isTimeEstimatedPlural) }},
+      {{ formatDuration(timeSpent) }}
+      {{ $tc('main.days_spent', isTimeSpentPlural)
+      }}<span v-if="!isAssets"
+        >, {{ nbFrames }} {{ $tc('main.nb_frames', nbFrames) }}</span
+      >)
+    </p>
   </div>
-  <p
-    class="has-text-centered nb-tasks"
-    v-if="!isLoading"
-  >
-    {{ tasks.length }} {{ $tc('tasks.number', tasks.length) }}
-    ({{ formatDuration(timeEstimated) }}
-     {{ $tc('main.days_estimated', isTimeEstimatedPlural) }},
-     {{ formatDuration(timeSpent) }}
-     {{ $tc('main.days_spent', isTimeSpentPlural) }}<span v-if="!isAssets">,
-     {{ nbFrames }} {{ $tc('main.nb_frames', nbFrames) }}</span>)
-  </p>
-</div>
 </template>
 
 <script>
-import Vue from 'vue'
+import Vue from 'vue/dist/vue'
 import { mapGetters, mapActions } from 'vuex'
 import moment from 'moment-timezone'
 import {
@@ -217,10 +305,12 @@ import { formatListMixin } from '@/components/mixins/format'
 import { domMixin } from '@/components/mixins/dom'
 
 import DateField from '@/components/widgets/DateField'
+import EntityPreview from '@/components/widgets/EntityPreview'
 import EntityThumbnail from '@/components/widgets/EntityThumbnail'
 import PeopleAvatarWithMenu from '@/components/widgets/PeopleAvatarWithMenu'
 import TableInfo from '@/components/widgets/TableInfo'
 import ValidationCell from '@/components/cells/ValidationCell'
+import ValidationTag from '@/components/widgets/ValidationTag'
 
 export default {
   name: 'task-list',
@@ -228,13 +318,15 @@ export default {
 
   components: {
     DateField,
+    EntityPreview,
     EntityThumbnail,
     PeopleAvatarWithMenu,
     TableInfo,
-    ValidationCell
+    ValidationCell,
+    ValidationTag
   },
 
-  data () {
+  data() {
     return {
       lastSelection: null,
       page: 1,
@@ -244,11 +336,23 @@ export default {
   },
 
   props: {
+    disabledDates: {
+      type: Object,
+      default: () => {}
+    },
     entityType: {
       type: String,
       default: 'Asset'
     },
+    isContactSheet: {
+      type: Boolean,
+      default: false
+    },
     isError: {
+      type: Boolean,
+      default: false
+    },
+    isGrouped: {
       type: Boolean,
       default: false
     },
@@ -266,11 +370,11 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     window.addEventListener('keydown', this.onKeyDown, false)
   },
 
-  beforeDestroy () {
+  beforeDestroy() {
     window.removeEventListener('keydown', this.onKeyDown)
   },
 
@@ -278,10 +382,12 @@ export default {
     ...mapGetters([
       'assetMap',
       'editMap',
+      'episodeMap',
       'nbSelectedTasks',
       'personMap',
       'user',
       'selectedTasks',
+      'sequenceMap',
       'shotMap',
       'taskMap',
       'isCurrentUserManager',
@@ -289,31 +395,37 @@ export default {
       'taskTypeMap'
     ]),
 
-    isAssets () {
+    isAssets() {
       return this.entityType === 'Asset'
     },
 
-    timeSpent () {
+    isEpisodes() {
+      return this.entityType === 'Episode'
+    },
+
+    isShots() {
+      return this.entityType === 'Shot'
+    },
+
+    timeSpent() {
       return this.tasks.reduce((acc, task) => acc + task.duration, 0)
     },
 
-    isTimeSpentPlural () {
-      return Math.floor(
-        (this.timeSpent ? this.timeSpent : 0) / 60 / 8
-      ) <= 1
+    isTimeSpentPlural() {
+      return Math.floor((this.timeSpent ? this.timeSpent : 0) / 60 / 8) <= 1
     },
 
-    timeEstimated () {
+    timeEstimated() {
       return this.tasks.reduce((acc, task) => acc + task.estimation, 0)
     },
 
-    isTimeEstimatedPlural () {
-      return Math.floor(
-        (this.timeEstimated ? this.timeEstimated : 0) / 60 / 8
-      ) <= 1
+    isTimeEstimatedPlural() {
+      return (
+        Math.floor((this.timeEstimated ? this.timeEstimated : 0) / 60 / 8) <= 1
+      )
     },
 
-    nbFrames () {
+    nbFrames() {
       let total = 0
       this.tasks.forEach(task => {
         const entity = this.shotMap.get(task.entity.id)
@@ -322,12 +434,64 @@ export default {
       return total
     },
 
-    displayedTasks () {
+    displayedTasks() {
       if (this.tasks && this.tasks.length > 0) {
         return this.tasks.slice(0, 60 * this.page)
       } else {
         return []
       }
+    },
+
+    tasksByParent() {
+      const result = []
+      if (this.tasks.length > 0) {
+        if (this.isShots) {
+          let currentTasks = {
+            name: this.tasks[0].sequence_name,
+            tasks: []
+          }
+          let previousTask = null
+          this.tasks.forEach(task => {
+            const entity = this.shotMap.get(task.entity.id)
+            if (previousTask) {
+              const previousEntity = this.shotMap.get(previousTask.entity.id)
+              if (previousEntity.sequence_id !== entity.sequence_id) {
+                result.push(currentTasks)
+                currentTasks = {
+                  name: task.sequence_name,
+                  tasks: []
+                }
+              }
+            }
+            currentTasks.tasks.push(task)
+            previousTask = task
+          })
+          result.push(currentTasks)
+        } else if (this.isAssets) {
+          let currentTasks = {
+            name: this.tasks[0].entity_type_name,
+            tasks: []
+          }
+          let previousTask = null
+          this.tasks.forEach(task => {
+            const entity = this.assetMap.get(task.entity.id)
+            if (previousTask) {
+              const previousEntity = this.assetMap.get(previousTask.entity.id)
+              if (previousEntity.asset_type_id !== entity.asset_type_id) {
+                result.push(currentTasks)
+                currentTasks = {
+                  name: task.entity_type_name,
+                  tasks: []
+                }
+              }
+            }
+            currentTasks.tasks.push(task)
+            previousTask = task
+          })
+          result.push(currentTasks)
+        }
+      }
+      return result
     }
   },
 
@@ -341,7 +505,15 @@ export default {
       'removeSelectedTask'
     ]),
 
-    isTaskChanged (task, data) {
+    getTaskName(task) {
+      if (this.entityType === 'Shot') {
+        return task.sequence_name + ' / ' + this.getEntity(task.entity.id).name
+      } else {
+        return task.entity_name
+      }
+    },
+
+    isTaskChanged(task, data) {
       const taskStart = task.start_date ? task.start_date.substring(0, 10) : ''
       const taskDue = task.due_date ? task.due_date.substring(0, 10) : ''
       return (
@@ -351,16 +523,16 @@ export default {
       )
     },
 
-    getDate (date) {
+    getDate(date) {
       return date ? moment(date, 'YYYY-MM-DD').toDate() : null
     },
 
-    updateEstimation (days) {
+    updateEstimation(days) {
       const estimation = daysToMinutes(this.organisation, days)
       this.updateTasksEstimation({ estimation })
     },
 
-    onUnassign (task, person) {
+    onUnassign(task, person) {
       if (this.selectedTasks.size > 0) {
         this.selectedTasks.forEach(t => {
           this.unassignPersonFromTask({ task: t, person })
@@ -369,7 +541,7 @@ export default {
       this.unassignPersonFromTask({ task, person })
     },
 
-    updateStartDate (date) {
+    updateStartDate(date) {
       Object.keys(this.selectionGrid).forEach(taskId => {
         let data = {
           start_date: null,
@@ -382,7 +554,8 @@ export default {
           if (
             task.start_date &&
             task.start_date.substring(0, 10) === formatSimpleDate(startDate)
-          ) return
+          )
+            return
           data = getDatesFromStartDate(
             startDate,
             dueDate,
@@ -395,26 +568,28 @@ export default {
           }
         }
         if (this.isTaskChanged(task, data)) {
-          this.updateTask({ taskId, data })
-            .catch(console.error)
+          this.updateTask({ taskId, data }).catch(console.error)
         }
       })
     },
 
-    updateDueDate (date) {
+    updateDueDate(date) {
       Object.keys(this.selectionGrid).forEach(taskId => {
         let data = {
           start_date: null,
           due_date: null
         }
         const task = this.taskMap.get(taskId)
-        const startDate = task.start_date ? parseSimpleDate(task.start_date) : null
+        const startDate = task.start_date
+          ? parseSimpleDate(task.start_date)
+          : null
         if (date) {
           const dueDate = moment(date)
           if (
             task.due_date &&
             task.due_date.substring(0, 10) === formatSimpleDate(dueDate)
-          ) return
+          )
+            return
           data = getDatesFromEndDate(
             startDate,
             dueDate,
@@ -427,13 +602,12 @@ export default {
           }
         }
         if (this.isTaskChanged(task, data)) {
-          this.updateTask({ taskId, data })
-            .catch(console.error)
+          this.updateTask({ taskId, data }).catch(console.error)
         }
       })
     },
 
-    updateTasksEstimation ({ estimation }) {
+    updateTasksEstimation({ estimation }) {
       Object.keys(this.selectionGrid).forEach(taskId => {
         const task = this.taskMap.get(taskId)
         let data = { estimation }
@@ -448,66 +622,63 @@ export default {
           data.estimation = estimation
         }
         if (this.isTaskChanged(task, data)) {
-          this.updateTask({ taskId, data })
-            .catch(console.error)
+          this.updateTask({ taskId, data }).catch(console.error)
         }
       })
     },
 
-    formatDate (date) {
+    formatDate(date) {
       if (date) return moment(date).format('YYYY-MM-DD')
       else return ''
     },
 
-    isEstimationBurned (task) {
-      return task.estimation &&
+    isEstimationBurned(task) {
+      return (
+        task.estimation &&
         task.estimation > 0 &&
         task.duration > task.estimation
+      )
     },
 
-    onBodyScroll (event, position) {
+    onBodyScroll(event, position) {
       this.$emit('scroll', position.scrollTop)
       const maxHeight =
         this.$refs.body.scrollHeight - this.$refs.body.offsetHeight
-      if (maxHeight < (position.scrollTop + 100)) {
+      if (maxHeight < position.scrollTop + 100) {
         this.page++
       }
     },
 
-    getEntity (entityId) {
-      if (this.isAssets) {
-        return this.assetMap.get(entityId)
-      } else if (this.entityType === 'Shot') {
-        return this.shotMap.get(entityId)
-      } else if (this.entityType === 'Edit') {
-        return this.editMap.get(entityId)
-      }
-      return this.assetMap.get(entityId)
+    getEntity(entityId) {
+      return this[`${this.entityType.toLowerCase()}Map`].get(entityId)
     },
 
-    onKeyDown (event) {
+    onKeyDown(event) {
       if (this.tasks.length > 0 && event.altKey) {
         let index = this.lastSelection ? this.lastSelection : 0
         if ([37, 38].includes(event.keyCode)) {
-          index = (index - 1) < 0 ? index = this.tasks.length - 1 : index - 1
+          index = index - 1 < 0 ? (index = this.tasks.length - 1) : index - 1
           this.selectTask({}, index, this.tasks[index])
+          this.pauseEvent(event)
         } else if ([39, 40].includes(event.keyCode)) {
-          index = (index + 1) >= this.tasks.length ? index = 0 : index + 1
+          index = index + 1 >= this.tasks.length ? (index = 0) : index + 1
           this.selectTask({}, index, this.tasks[index])
+          this.pauseEvent(event)
         }
       }
     },
 
-    selectTask (event, index, task) {
-      if (event && event.target && (
+    selectTask(event, index, task) {
+      if (
+        event &&
+        event.target &&
         // Dirty hack needed to make date picker and inputs work properly
-        ['INPUT'].includes(event.target.nodeName) ||
-        (
-          event.target.parentNode &&
-          ['HEADER'].includes(event.target.parentNode.nodeName)
-        ) ||
-        ['cell day selected'].includes(event.target.className)
-      )) return
+        (['INPUT'].includes(event.target.nodeName) ||
+          (event.target.parentNode &&
+            ['HEADER'].includes(event.target.parentNode.nodeName)) ||
+          ['cell day selected'].includes(event.target.className))
+      )
+        return
       const isSelected = this.selectionGrid[task.id]
       const isManySelection = Object.keys(this.selectionGrid).length > 1
       if (!(event.ctrlKey || event.metaKey) && !event.shiftKey) {
@@ -542,13 +713,13 @@ export default {
       this.scrollToLine(task.id)
     },
 
-    setScrollPosition (scrollPosition) {
+    setScrollPosition(scrollPosition) {
       if (this.$refs.body) {
         this.$refs.body.scrollTop = scrollPosition
       }
     },
 
-    scrollToLine (taskId) {
+    scrollToLine(taskId) {
       const taskLine = this.$refs['task-' + taskId]
       if (taskLine && this.$refs.body) {
         const margin = 30
@@ -559,19 +730,15 @@ export default {
 
         if (isBelow) {
           const scrollingRequired = rect.bottom - listRect.bottom + margin
-          this.setScrollPosition(
-            this.$refs.body.scrollTop + scrollingRequired
-          )
+          this.setScrollPosition(this.$refs.body.scrollTop + scrollingRequired)
         } else if (isAbove) {
           const scrollingRequired = listRect.top - rect.top + margin
-          this.setScrollPosition(
-            this.$refs.body.scrollTop - scrollingRequired
-          )
+          this.setScrollPosition(this.$refs.body.scrollTop - scrollingRequired)
         }
       }
     },
 
-    isInDepartment (task) {
+    isInDepartment(task) {
       if (this.isCurrentUserManager) {
         return true
       } else if (this.isCurrentUserSupervisor) {
@@ -579,22 +746,26 @@ export default {
           return true
         } else {
           const taskType = this.taskTypeMap.get(task.task_type_id)
-          return taskType.department_id && this.user.departments.includes(
-            taskType.department_id)
+          return (
+            taskType.department_id &&
+            this.user.departments.includes(taskType.department_id)
+          )
         }
       } else {
         return false
       }
     },
 
-    resetSelection () {
+    resetSelection() {
       this.selectionGrid = {}
       this.lastSelection = null
     },
 
-    getTableData () {
+    getTableData() {
       const headers = [
-        this.isAssets ? this.$t('tasks.fields.asset_type') : this.$t('tasks.fields.sequence'),
+        this.isAssets
+          ? this.$t('tasks.fields.asset_type')
+          : this.$t('tasks.fields.sequence'),
         this.$t('tasks.fields.entity_name'),
         this.$t('tasks.fields.task_status'),
         this.$t('tasks.fields.assignees'),
@@ -611,13 +782,15 @@ export default {
         headers.splice(4, 0, 'Frames')
       }
       const taskLines = [headers]
-      this.tasks.forEach((task) => {
+      this.tasks.forEach(task => {
         if (!task) return
-        const assignees = task.assignees.map(personId => {
-          const person = this.personMap.get(personId)
-          if (person) return person.name
-          else return ''
-        }).join(', ')
+        const assignees = task.assignees
+          .map(personId => {
+            const person = this.personMap.get(personId)
+            if (person) return person.name
+            else return ''
+          })
+          .join(', ')
 
         const line = [
           this.isAssets
@@ -646,12 +819,12 @@ export default {
   },
 
   watch: {
-    tasks () {
+    tasks() {
       this.page = 1
       this.resetSelection()
     },
 
-    nbSelectedTasks () {
+    nbSelectedTasks() {
       if (this.nbSelectedTasks === 0) this.resetSelection()
     }
   }
@@ -660,9 +833,9 @@ export default {
 
 <style scoped lang="scss">
 .thumbnail {
-  min-width: 80px;
-  max-width: 80px;
-  width: 80px;
+  min-width: 63px;
+  max-width: 63px;
+  width: 63px;
 }
 
 .asset-type {
@@ -682,8 +855,8 @@ export default {
 }
 
 .status {
-  min-width: 100px;
-  width: 100px;
+  min-width: 140px;
+  width: 140px;
 }
 
 .assignees {
@@ -696,7 +869,12 @@ export default {
 .estimation {
   min-width: 60px;
   width: 60px;
-  text-align: center;
+}
+
+.selected {
+  .estimation {
+    padding: 0;
+  }
 }
 
 .last-comment-date,
@@ -735,7 +913,7 @@ td.retake-count {
 }
 
 .empty {
-  width: 100%
+  width: 100%;
 }
 
 .nb-tasks {
@@ -756,7 +934,7 @@ td.retake-count {
 
 .datatable-head {
   th {
-    padding-left: 0;
+    padding-left: 5px;
 
     &.retake-count {
       padding-right: 1em;
@@ -770,11 +948,63 @@ td.retake-count {
 }
 
 .input {
-  padding: 0.5em
+  padding: 0.5em;
 }
 
 .datatable-wrapper {
   min-height: calc(100% - 50px);
+}
+
+.data-list {
+  margin-top: 0.6em;
+}
+
+.list-wrapper {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.list-wrapper div:first-child h2 {
+  margin-top: 0em;
+}
+
+.task-grid {
+  display: grid;
+  gap: 10px;
+  // grid-template-columns: repeat(auto-fill, 202px);
+  grid-template-columns: 204px 204px 204px 204px 204px 204px;
+
+  .task-card {
+    border: 2px solid transparent;
+    border-radius: 5px;
+    box-shadow: 0 0 2px var(--box-shadow);
+    background: var(--background-alt);
+    cursor: pointer;
+    display: flex;
+    font-weight: bold;
+    flex-direction: column;
+    padding: 0;
+    padding-bottom: 0.2em;
+    transition: border 0.3s ease;
+
+    &.selected {
+      border: 2px solid $dark-purple;
+    }
+
+    .task-name {
+      font-size: 0.9em;
+      margin-bottom: 0.5em;
+      margin-top: 0.3em;
+      padding: 0 0.5em;
+    }
+    .task-data {
+      padding: 0 0.1em 0 0.3em;
+
+      .avatar-wrapper:last-child {
+        margin-right: 0em;
+      }
+    }
+  }
 }
 
 .datatable-body {
@@ -784,7 +1014,8 @@ td.retake-count {
 
   td,
   tr {
-    padding: 0;
+    padding-bottom: 0;
+    padding-top: 0;
 
     &.thumbnail {
       padding: 6px;
@@ -792,7 +1023,11 @@ td.retake-count {
   }
 
   td.retake-count {
-    padding-right: 1em;
+    padding-right: 0.5em;
+  }
+
+  td.name {
+    border-right: 1px solid var(--border);
   }
 
   td.status {
@@ -803,5 +1038,15 @@ td.retake-count {
   tr.task-line {
     cursor: pointer;
   }
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
 }
 </style>

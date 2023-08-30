@@ -1,65 +1,67 @@
 <template>
-<div>
-  <label class="label" v-if="label.length > 0">
-    {{ label }}
-  </label>
-  <div
-    :class="{
-      combo: true,
-      open: showList
-    }"
-    @click="toggleList"
-  >
+  <div>
+    <label class="label" v-if="label.length > 0">
+      {{ label }}
+    </label>
     <div
-      class="flexrow"
-    >
-      <div
-        class="selected-line flexrow-item"
-      >
-        {{ selectedOption ? selectedOption.label : '' }}
-      </div>
-      <chevron-down-icon class="down-icon flexrow-item"/>
-    </div>
-    <div
-      class="select-input"
-      ref="select"
+      :class="{
+        combo: true,
+        open: showList
+      }"
       @click="toggleList"
-      v-if="showList"
     >
-      <div
-        class="option-line"
-        v-for="option in options"
-        @click="selectOption(option)"
-        @click.middle="openRoute(option)"
-        :key="option.id"
-      >
-        {{ option.label }}
+      <div class="flexrow">
+        <div class="selected-line flexrow-item">
+          {{ selectedOption ? getOptionLabel(selectedOption) : '' }}
+        </div>
+        <chevron-down-icon class="down-icon flexrow-item" />
+      </div>
+      <div class="select-input" ref="select" v-if="showList">
+        <div
+          class="option-line flexrow"
+          v-for="option in options"
+          @click="selectOption(option)"
+          @click.middle="openRoute(option)"
+          :key="option.id"
+        >
+          <entity-thumbnail
+            class="revision-thumbnail"
+            :preview-file-id="option.value"
+            :width="75"
+            :height="45"
+            :empty-width="75"
+            :empty-height="45"
+            no-preview
+            v-if="isPreview"
+          />
+          {{ getOptionLabel(option) }}
+        </div>
       </div>
     </div>
+    <div
+      @click="toggleList"
+      :class="{
+        'c-mask': true,
+        'is-active': showList
+      }"
+    ></div>
   </div>
-  <div
-    @click="toggleList"
-    :class="{
-      'c-mask': true,
-      'is-active': showList
-    }"
-  >
-  </div>
-</div>
 </template>
 
 <script>
 import { mapGetters } from 'vuex'
 import { ChevronDownIcon } from 'vue-feather-icons'
+import EntityThumbnail from '@/components/widgets/EntityThumbnail.vue'
 
 export default {
   name: 'combobox-styled',
 
   components: {
-    ChevronDownIcon
+    ChevronDownIcon,
+    EntityThumbnail
   },
 
-  data () {
+  data() {
     return {
       selectedOption: {
         label: '',
@@ -81,42 +83,62 @@ export default {
     value: {
       default: '',
       type: String
+    },
+    localeKeyPrefix: {
+      default: '',
+      type: String
+    },
+    isPreview: {
+      default: false,
+      type: Boolean
     }
   },
 
-  mounted () {
+  mounted() {
     if (this.options.length > 0) {
       this.selectedOption = this.options[0]
     }
   },
 
   computed: {
-    ...mapGetters([
-      'isDarkTheme'
-    ])
+    ...mapGetters(['isDarkTheme'])
   },
 
   methods: {
-    selectOption (option) {
+    selectOption(option) {
       this.$emit('input', option.value)
       this.selectedOption = option
-      this.toggleList()
     },
 
-    openRoute (option) {
+    openRoute(option) {
       const ahref = this.$router.resolve(option.route).href
-      const url =
-        `${window.location.protocol}//${window.location.host}${ahref}`
+      const url = `${window.location.protocol}//${window.location.host}${ahref}`
       window.open(url, '_blank')
     },
 
-    toggleList () {
+    toggleList() {
+      if (this.showList) {
+        this.lastScrollPosition = this.$refs.select.scrollTop
+      }
       this.showList = !this.showList
+      if (this.showList) {
+        this.$nextTick(() => {
+          this.$refs.select.scrollTo({ top: this.lastScrollPosition, left: 0 })
+        })
+      }
+    },
+
+    getOptionLabel(option) {
+      if (this.localeKeyPrefix.length > 0) {
+        return this.$t(this.localeKeyPrefix + option.label.toLowerCase())
+      } else {
+        return option.label
+      }
     }
   },
 
   watch: {
-    options () {
+    options() {
       if (this.options.length > 0) {
         const option = this.options.find(o => o.value === this.value)
         if (option) {
@@ -127,7 +149,7 @@ export default {
       }
     },
 
-    value () {
+    value() {
       this.selectedOption = this.options.find(o => o.value === this.value)
     }
   }
@@ -140,6 +162,7 @@ export default {
   .selected-line,
   .option-line,
   .combo {
+    color: var(--text);
     background: $dark-grey-light;
     border-color: $dark-grey;
   }
@@ -151,14 +174,14 @@ export default {
 
 .combo {
   background: $white;
-  color: var(--text);
   border: 1px solid $light-grey-light;
-  border-radius: 0.5em;
+  border-radius: 10px;
   user-select: none;
   cursor: pointer;
+  display: inline-block;
   margin: 0;
   margin-top: 1px;
-  max-width: 200px;
+  max-width: 400px;
   padding: 0.5em;
   position: relative;
   vertical-align: middle;
@@ -225,5 +248,9 @@ export default {
 
 .field .label {
   padding-top: 5px;
+}
+
+.revision-thumbnail {
+  margin-right: 0.5em;
 }
 </style>

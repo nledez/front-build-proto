@@ -21,38 +21,53 @@ import TaskType from '@/components/pages/TaskType'
 import Todos from '@/components/pages/Todos'
 import Edits from '@/components/pages/Edits'
 
-const AssetTypes = () => import('../components/pages/AssetTypes')
-const Asset = () => import('../components/pages/Asset')
-const Breakdown = () => import('../components/pages/Breakdown')
-const CustomActions = () => import('../components/pages/CustomActions')
-const StatusAutomations = () => import('../components/pages/StatusAutomations')
-const Episodes = () => import('../components/pages/Episodes')
-const MainSchedule = () => import('../components/pages/MainSchedule')
-const NotFound = () => import('../components/pages/NotFound')
-const Person = () => import('../components/pages/Person')
-const People = () => import('../components/pages/People')
-const Playlist = () => import('../components/pages/Playlist')
-const Productions = () => import('../components/pages/Productions')
-const ProductionAssetTypes = () => import('../components/pages/ProductionAssetTypes')
-const ProductionSchedule = () => import('../components/pages/ProductionSchedule')
-const ProductionQuota = () => import('../components/pages/ProductionQuota')
-const ProductionSettings = () => import('../components/pages/ProductionSettings')
-const Profile = () => import('../components/pages/Profile')
-const ResetPassword = () => import('../components/pages/ResetPassword')
-const ResetChangePassword = () => import('../components/pages/ResetChangePassword')
-const Logs = () => import('../components/pages/Logs')
-const ServerDown = () => import('../components/pages/ServerDown')
-const Settings = () => import('../components/pages/Settings')
-const Sequences = () => import('../components/pages/Sequences')
-const Shot = () => import('../components/pages/Shot')
-const Task = () => import('../components/pages/Task')
-const Team = () => import('../components/pages/Team')
-const Timesheets = () => import('../components/pages/Timesheets')
-const TaskStatus = () => import('../components/pages/TaskStatus')
-const TaskTypes = () => import('../components/pages/TaskTypes')
-const Departements = () => import('../components/pages/departments/Departments')
-const WrongBrowser = () => import('../components/pages/WrongBrowser')
-const Edit = () => import('../components/pages/Edit')
+const AssetTypes = () => import('@/components/pages/AssetTypes.vue')
+const Asset = () => import('@/components/pages/Asset.vue')
+const Breakdown = () => import('@/components/pages/Breakdown.vue')
+const CustomActions = () => import('@/components/pages/CustomActions.vue')
+const FirstConnection = () => import('@/components/pages/FirstConnection.vue')
+const Episodes = () => import('@/components/pages/Episodes.vue')
+const Episode = () => import('@/components/pages/Episode.vue')
+const EpisodeStats = () => import('@/components/pages/EpisodeStats.vue')
+const MainSchedule = () => import('@/components/pages/MainSchedule.vue')
+const MyChecks = () => import('@/components/pages/MyChecks.vue')
+const NotFound = () => import('@/components/pages/NotFound.vue')
+const Person = () => import('@/components/pages/Person.vue')
+const People = () => import('@/components/pages/People.vue')
+const Playlist = () => import('@/components/pages/Playlist.vue')
+const Productions = () => import('@/components/pages/Productions.vue')
+const ProductionAssetTypes = () =>
+  import('@/components/pages/ProductionAssetTypes.vue')
+const ProductionSchedule = () =>
+  import('@/components/pages/ProductionSchedule.vue')
+const ProductionQuota = () => import('@/components/pages/ProductionQuota.vue')
+const ProductionSettings = () =>
+  import('@/components/pages/ProductionSettings.vue')
+const Profile = () => import('@/components/pages/Profile.vue')
+const ResetPassword = () => import('@/components/pages/ResetPassword.vue')
+const ResetChangePassword = () =>
+  import('@/components/pages/ResetChangePassword.vue')
+const Logs = () => import('@/components/pages/Logs.vue')
+const EntitySearch = () => import('@/components/pages/EntitySearch.vue')
+const ServerDown = () => import('@/components/pages/ServerDown.vue')
+const Settings = () => import('@/components/pages/Settings.vue')
+const Sequence = () => import('@/components/pages/Sequence.vue')
+const Sequences = () => import('@/components/pages/Sequences.vue')
+const SequenceStats = () => import('@/components/pages/SequenceStats.vue')
+const Shot = () => import('@/components/pages/Shot.vue')
+const StatusAutomations = () =>
+  import('@/components/pages/StatusAutomations.vue')
+const Task = () => import('@/components/pages/Task.vue')
+const Team = () => import('@/components/pages/Team.vue')
+import TeamSchedule from '@/components/pages/TeamSchedule'
+const Timesheets = () => import('@/components/pages/Timesheets.vue')
+
+const TaskStatus = () => import('@/components/pages/TaskStatus.vue')
+const TaskTypes = () => import('@/components/pages/TaskTypes.vue')
+const Departements = () =>
+  import('@/components/pages/departments/Departments.vue')
+const WrongBrowser = () => import('@/components/pages/WrongBrowser.vue')
+const Edit = () => import('@/components/pages/Edit.vue')
 
 const ADMIN_PAGES = [
   'asset-types',
@@ -70,7 +85,6 @@ const ADMIN_PAGES = [
 ]
 
 export const routes = [
-
   {
     path: '',
     component: Main,
@@ -82,20 +96,21 @@ export const routes = [
         firefox: '>31',
         edge: '>90',
         vivaldi: '>2.8',
-        opera: '>22'
+        opera: '>22',
+        safari: '>9'
       })
       if (!isValidBrowser) {
         return next({ name: 'wrong-browser' })
       }
 
-      auth.requireAuth(to, from, (nextPath) => {
+      auth.requireAuth(to, from, nextPath => {
         if (nextPath) {
           next(nextPath)
         } else {
           timezone.setTimezone()
           lang.setLocale()
           if (store.state.productions.openProductions.length === 0) {
-            init((err) => {
+            init(err => {
               if (err) {
                 next({ name: 'server-down' })
               } else {
@@ -125,7 +140,7 @@ export const routes = [
     component: Main,
 
     beforeEnter: (to, from, next) => {
-      auth.requireAuth(to, from, (nextPath) => {
+      auth.requireAuth(to, from, nextPath => {
         if (nextPath) {
           next(nextPath)
         } else {
@@ -251,6 +266,12 @@ export const routes = [
       },
 
       {
+        path: '/entity-search',
+        component: EntitySearch,
+        name: 'entity-search'
+      },
+
+      {
         path: 'people',
         component: People,
         name: 'people',
@@ -286,6 +307,12 @@ export const routes = [
         path: '/main-schedule',
         component: MainSchedule,
         name: 'main-schedule'
+      },
+
+      {
+        path: '/team-schedule',
+        component: TeamSchedule,
+        name: 'team-schedule'
       },
 
       {
@@ -404,12 +431,16 @@ export const routes = [
       },
 
       {
-        path: 'todos',
+        path: 'my-tasks',
         component: Todos,
         name: 'todos',
-        children: [
-          { path: ':tab', component: Todos, name: 'todos-tab' }
-        ]
+        children: [{ path: ':tab', component: Todos, name: 'todos-tab' }]
+      },
+
+      {
+        path: 'my-checks',
+        component: MyChecks,
+        name: 'checks'
       },
 
       {
@@ -439,6 +470,12 @@ export const routes = [
         path: 'productions/:production_id/team',
         component: Team,
         name: 'team'
+      },
+
+      {
+        path: 'news-feed',
+        component: ProductionNewsFeed,
+        name: 'newsfeed'
       },
 
       {
@@ -579,35 +616,7 @@ export const routes = [
       {
         path: 'productions/:production_id/assets',
         component: Assets,
-        name: 'assets',
-        children: [
-          {
-            path: 'new',
-            component: Assets,
-            name: 'new-asset'
-          },
-          {
-            path:
-            'edit/:asset_id',
-            component: Assets,
-            name: 'edit-asset'
-          },
-          {
-            path: 'delete/:asset_id',
-            component: Assets,
-            name: 'delete-asset'
-          },
-          {
-            path: 'restore/:asset_id',
-            component: Assets,
-            name: 'restore-asset'
-          },
-          {
-            path: 'delete-all-tasks/:task_type_id',
-            component: Assets,
-            name: 'delete-all-asset-tasks'
-          }
-        ]
+        name: 'assets'
       },
 
       {
@@ -619,29 +628,7 @@ export const routes = [
       {
         path: 'productions/:production_id/shots',
         component: Shots,
-        name: 'shots',
-        children: [
-          {
-            path: 'delete-all-tasks/:task_type_id',
-            component: Shots,
-            name: 'delete-all-shot-tasks'
-          },
-          {
-            path: 'edit/:shot_id',
-            component: Shots,
-            name: 'edit-shot'
-          },
-          {
-            path: 'delete/:shot_id',
-            component: Shots,
-            name: 'delete-shot'
-          },
-          {
-            path: 'restore/:shot_id',
-            component: Shots,
-            name: 'restore-shot'
-          }
-        ]
+        name: 'shots'
       },
 
       {
@@ -653,29 +640,7 @@ export const routes = [
       {
         path: 'productions/:production_id/edits',
         component: Edits,
-        name: 'edits',
-        children: [
-          {
-            path: 'delete-all-tasks/:task_type_id',
-            component: Edits,
-            name: 'delete-all-edit-tasks'
-          },
-          {
-            path: 'edit/:edit_id',
-            component: Edits,
-            name: 'edit-edit'
-          },
-          {
-            path: 'delete/:edit_id',
-            component: Edits,
-            name: 'delete-edit'
-          },
-          {
-            path: 'restore/:edit_id',
-            component: Edits,
-            name: 'restore-edit'
-          }
-        ]
+        name: 'edits'
       },
 
       {
@@ -685,21 +650,33 @@ export const routes = [
       },
 
       {
+        path: 'productions/:production_id/episodes',
+        component: Episodes,
+        name: 'episodes',
+        children: []
+      },
+      {
+        path: 'productions/:production_id/episodes/:episode_id',
+        component: Episode,
+        name: 'episode'
+      },
+
+      {
+        path: 'productions/:production_id/sequences/:sequence_id',
+        component: Sequence,
+        name: 'sequence'
+      },
+
+      {
         path: 'productions/:production_id/sequences',
         component: Sequences,
-        name: 'sequences',
-        children: [
-          {
-            path: 'edit/:sequence_id',
-            component: Sequences,
-            name: 'edit-sequence'
-          },
-          {
-            path: 'delete/:sequence_id',
-            component: Sequences,
-            name: 'delete-sequence'
-          }
-        ]
+        name: 'sequences'
+      },
+
+      {
+        path: 'productions/:production_id/sequence-stats',
+        component: SequenceStats,
+        name: 'sequence-stats'
       },
 
       {
@@ -727,15 +704,23 @@ export const routes = [
       },
 
       {
+        name: 'episode-task',
+        path: 'productions/:production_id/episodes/:episode_id/:type/tasks/:task_id',
+        component: Task,
+        children: [
+          {
+            name: 'episode-task-preview',
+            path: 'previews/:preview_id',
+            component: Task
+          }
+        ]
+      },
+
+      {
         name: 'task',
         path: 'productions/:production_id/:type/tasks/:task_id',
         component: Task,
         children: [
-          {
-            name: 'task-delete',
-            path: 'delete',
-            component: Task
-          },
           {
             name: 'task-change-preview',
             path: 'comments/:comment_id/change-preview',
@@ -745,36 +730,15 @@ export const routes = [
             name: 'task-preview',
             path: 'previews/:preview_id',
             component: Task
-          },
-          {
-            name: 'task-edit-comment',
-            path: 'comments/:comment_id/edit',
-            component: Task
-          },
-          {
-            name: 'task-delete-comment',
-            path: 'comments/:comment_id/delete',
-            component: Task
           }
         ]
       },
 
       {
-        path: 'productions/:production_id/episodes',
-        component: Episodes,
-        name: 'episodes',
-        children: [
-          {
-            path: 'edit/:episode_id',
-            component: Episodes,
-            name: 'edit-episode'
-          },
-          {
-            path: 'delete/:episode_id',
-            component: Episodes,
-            name: 'delete-episode'
-          }
-        ]
+        path: 'productions/:production_id/episode-stats',
+        component: EpisodeStats,
+        name: 'episode-stats',
+        children: []
       },
 
       {
@@ -826,34 +790,7 @@ export const routes = [
       {
         path: 'productions/:production_id/episodes/:episode_id/assets',
         component: Assets,
-        name: 'episode-assets',
-        children: [
-          {
-            path: 'new',
-            component: Assets,
-            name: 'episode-new-asset'
-          },
-          {
-            path: 'edit/:asset_id',
-            component: Assets,
-            name: 'episode-edit-asset'
-          },
-          {
-            path: 'delete/:asset_id',
-            component: Assets,
-            name: 'episode-delete-asset'
-          },
-          {
-            path: 'restore/:asset_id',
-            component: Assets,
-            name: 'episode-restore-asset'
-          },
-          {
-            path: 'delete-all-tasks/:task_type_id',
-            component: Assets,
-            name: 'episode-delete-all-asset-tasks'
-          }
-        ]
+        name: 'episode-assets'
       },
 
       {
@@ -865,34 +802,7 @@ export const routes = [
       {
         path: 'productions/:production_id/episodes/:episode_id/shots',
         component: Shots,
-        name: 'episode-shots',
-        children: [
-          {
-            path: 'shots/manage',
-            component: Shots,
-            name: 'episode-manage-shots'
-          },
-          {
-            path: 'delete-all-tasks/:task_type_id',
-            component: Shots,
-            name: 'episode-delete-all-shot-tasks'
-          },
-          {
-            path: 'edit/:shot_id',
-            component: Shots,
-            name: 'episode-edit-shot'
-          },
-          {
-            path: 'delete/:shot_id',
-            component: Shots,
-            name: 'episode-delete-shot'
-          },
-          {
-            path: 'shots/restore/:shot_id',
-            component: Shots,
-            name: 'episode-restore-shot'
-          }
-        ]
+        name: 'episode-shots'
       },
 
       {
@@ -905,33 +815,7 @@ export const routes = [
         path: 'productions/:production_id/episodes/:episode_id/edits',
         component: Edits,
         name: 'episode-edits',
-        children: [
-          {
-            path: 'edits/manage',
-            component: Edits,
-            name: 'episode-manage-edits'
-          },
-          {
-            path: 'delete-all-tasks/:task_type_id',
-            component: Edits,
-            name: 'episode-delete-all-edit-tasks'
-          },
-          {
-            path: 'edit/:edit_id',
-            component: Edits,
-            name: 'episode-edit-edit'
-          },
-          {
-            path: 'delete/:edit_id',
-            component: Edits,
-            name: 'episode-delete-edit'
-          },
-          {
-            path: 'edits/restore/:edit_id',
-            component: Edits,
-            name: 'episode-restore-edit'
-          }
-        ]
+        children: []
       },
 
       {
@@ -949,19 +833,19 @@ export const routes = [
       {
         path: 'productions/:production_id/episodes/:episode_id/sequences',
         component: Sequences,
-        name: 'episode-sequences',
-        children: [
-          {
-            path: 'edit/:sequence_id',
-            component: Sequences,
-            name: 'episode-edit-sequence'
-          },
-          {
-            path: 'delete/:sequence_id',
-            component: Sequences,
-            name: 'episode-delete-sequence'
-          }
-        ]
+        name: 'episode-sequences'
+      },
+
+      {
+        path: 'productions/:production_id/episodes/:episode_id/sequences/:sequence_id',
+        component: Sequence,
+        name: 'episode-sequence'
+      },
+
+      {
+        path: 'productions/:production_id/episodes/:episode_id/sequence-stats',
+        component: SequenceStats,
+        name: 'episode-sequence-stats'
       },
 
       {
@@ -983,33 +867,31 @@ export const routes = [
       },
 
       {
-        path: 'productions/:production_id/episodes/:episode_id/:type/tasks/:task_id',
-        name: 'episode-task',
+        path: 'productions/:production_id/episodes/task-types/:task_type_id',
+        component: TaskType,
+        name: 'episodes-task-type',
+        children: [
+          {
+            name: 'episodes-task-type-schedule',
+            path: 'schedule',
+            component: TaskType
+          },
+          {
+            name: 'episodes-task-type-estimation',
+            path: 'estimation',
+            component: TaskType
+          }
+        ]
+      },
+
+      {
+        path: 'productions/:production_id/episodes/:episode_id/tasks/:task_id',
+        name: 'episode-episode-task',
         component: Task,
         children: [
           {
-            name: 'episode-task-delete',
-            path: 'delete',
-            component: Task
-          },
-          {
-            name: 'episode-task-change-preview',
-            path: 'comments/:comment_id/change-preview',
-            component: Task
-          },
-          {
-            name: 'episode-task-preview',
+            name: 'episode-episode-task-preview',
             path: 'previews/:preview_id',
-            component: Task
-          },
-          {
-            name: 'episode-task-edit-comment',
-            path: 'comments/:comment_id/edit',
-            component: Task
-          },
-          {
-            name: 'episode-task-delete-comment',
-            path: 'comments/:comment_id/delete',
             component: Task
           }
         ]
@@ -1023,12 +905,17 @@ export const routes = [
     name: 'login'
   },
   {
+    path: '/first-connection',
+    component: FirstConnection,
+    name: 'first-connection'
+  },
+  {
     path: '/reset-password',
     component: ResetPassword,
     name: 'reset-password'
   },
   {
-    path: '/reset-change-password/:token',
+    path: '/reset-change-password',
     component: ResetChangePassword,
     name: 'reset-change-password'
   },

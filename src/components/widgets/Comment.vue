@@ -1,292 +1,339 @@
 <template>
-<div>
-  <article
-    :class="{
-      comment: true,
-      pinned: comment.pinned,
-      highlighted: highlighted
-    }"
-    :style="{
-      'box-shadow': boxShadowStyle,
-    }"
-    v-if="!isEmpty"
-  >
-    <div class="content-wrapper full">
-      <div class="flexrow">
-        <validation-tag
-          class="flexrow-item"
-          :task="{ task_status_id: comment.task_status.id}"
-          :is-static="true"
-          :thin="!isChange"
-        />
-        <people-avatar
-          class="flexrow-item"
-          :size="25"
-          :font-size="12"
-          :person="comment.person"
-        />
-        <strong class="flexrow-item">
-          <people-name
-            class=""
+  <div>
+    <article
+      :class="{
+        comment: true,
+        pinned: comment.pinned,
+        highlighted: highlighted
+      }"
+      :style="{
+        'box-shadow': boxShadowStyle
+      }"
+      v-if="!isEmpty"
+    >
+      <div class="content-wrapper full">
+        <div class="flexrow">
+          <validation-tag
+            class="flexrow-item"
+            :task="{ task_status_id: comment.task_status.id }"
+            :is-static="true"
+            :thin="!isChange"
+          />
+          <people-avatar
+            class="flexrow-item"
+            :size="25"
+            :font-size="12"
             :person="comment.person"
+            v-if="!isCurrentUserClient || isAuthorClient"
           />
-        </strong>
-        <div class="filler"></div>
-        <span
-          class="flexrow-item date"
-          :title="fullDate"
-        >
-          {{ shortDate }}
-        </span>
-        <div class="flexrow-item menu-wrapper">
-          <chevron-down-icon
-            class="menu-icon"
-            @click="toggleCommentMenu"
-          />
-          <comment-menu
-            :is-pinned="comment.pinned"
-            :is-editable="editable"
-            @pin-clicked="$emit('pin-comment', comment)"
-            @edit-clicked="$emit('edit-comment', comment); toggleCommentMenu()"
-            @delete-clicked="$emit('delete-comment', comment); toggleCommentMenu()"
-            ref="menu"
-          />
-        </div>
-      </div>
-      <div class="flexrow-item comment-content">
-        <div class="content">
-          <p
-            class="client-comment"
-            v-if="personMap.get(comment.person_id).role === 'client'"
-          >
-            <span>
-              {{ $t('comments.comment_from_client') }}
-              <copy-icon
-                class="copy-icon"
-                size="1.1x"
-                @click="$emit('duplicate-comment', comment)"
-              />
-            </span>
-          </p>
-          <p
-            v-html="renderComment(comment.text, comment.mentions, personMap, uniqueClassName)"
-            class="comment-text"
-            v-if="comment.text"
-          >
-          </p>
-          <checklist
-            class="checklist"
-            :checklist="checklist"
-            @remove-task="removeTask"
-            @keyup.native="emitChangeEvent($event)"
-            @emit-change="emitChangeEvent"
-            :disabled="true"
-            v-if="checklist.length > 0"
-          />
-          <p class="has-text-centered" v-if="taskStatus.is_done && isLast">
-            <img
-              class="congrats-picture"
-              src="../../assets/illustrations/validated.png"
+          <strong class="flexrow-item">
+            <people-name
+              :person="comment.person"
+              v-if="!isCurrentUserClient || isAuthorClient"
             />
-          </p>
-          <p v-if="comment.attachment_files.length > 0">
-            <a
-              :href="getAttachmentPath(attachment)"
-              :key="attachment.id"
-              :title="attachment.name"
-              target="_blank"
-              v-for="attachment in pictureAttachments"
+          </strong>
+          <div class="filler"></div>
+          <span class="flexrow-item date" :title="fullDate">
+            {{ shortDate }}
+          </span>
+          <div class="flexrow-item menu-wrapper">
+            <chevron-down-icon class="menu-icon" @click="toggleCommentMenu" />
+            <comment-menu
+              :is-pinned="comment.pinned"
+              :is-editable="editable"
+              @pin-clicked="$emit('pin-comment', comment)"
+              @edit-clicked="
+                $emit('edit-comment', comment)
+                toggleCommentMenu()
+              "
+              @delete-clicked="
+                $emit('delete-comment', comment)
+                toggleCommentMenu()
+              "
+              ref="menu"
+            />
+          </div>
+        </div>
+        <div class="flexrow-item comment-content">
+          <div class="content">
+            <p
+              class="client-comment"
+              v-if="isAuthorClient && !isCurrentUserClient"
             >
-              <img
-                class="attachment"
-                :src="getAttachmentPath(attachment)"
-              />
-            </a>
-            <a
-              :href="getAttachmentPath(attachment)"
-              :key="attachment.id"
-              :title="attachment.name"
-              class="flexrow"
-              target="_blank"
-              v-for="attachment in fileAttachments"
-            >
-              <paperclip-icon size="1x" class="flexrow-item attachment-icon"/>
-              <span class="flexrow-item">
-              {{ attachment.name }}
+              <span>
+                {{ $t('comments.comment_from_client') }}
+                <copy-icon
+                  class="copy-icon"
+                  size="1.1x"
+                  @click="$emit('duplicate-comment', comment)"
+                />
               </span>
-            </a>
-          </p>
-          <div class="replies">
-            <div>
-              <div
-                :key="replyComment.id"
-                class="reply-comment"
-                v-for="replyComment in (comment.replies || [])"
+            </p>
+            <p
+              v-html="
+                renderComment(
+                  comment.text,
+                  comment.mentions,
+                  comment.department_mentions || [],
+                  personMap,
+                  departmentMap,
+                  uniqueClassName
+                )
+              "
+              class="comment-text"
+              v-if="comment.text"
+            ></p>
+            <checklist
+              class="checklist"
+              :checklist="checklist"
+              @remove-task="removeTask"
+              @keyup.native="emitChangeEvent($event)"
+              @emit-change="emitChangeEvent"
+              @time-code-clicked="onChecklistTimecodeClicked"
+              :disabled="true"
+              v-if="checklist.length > 0"
+            />
+            <p class="has-text-centered" v-if="taskStatus.is_done && isLast">
+              <img
+                class="congrats-picture"
+                src="../../assets/illustrations/validated.png"
+              />
+            </p>
+            <p v-if="comment.attachment_files.length > 0">
+              <a
+                :href="getAttachmentPath(attachment)"
+                :key="attachment.id"
+                :title="attachment.name"
+                target="_blank"
+                v-for="attachment in pictureAttachments"
               >
-                <div class="flexrow">
-                  <people-avatar
-                    class="flexrow-item"
-                    :size="18"
-                    :font-size="10"
-                    :person="personMap.get(replyComment.person_id)"
-                  />
-                  <strong class="flexrow-item">
-                    <people-name
-                      class=""
+                <img class="attachment" :src="getAttachmentPath(attachment)" />
+              </a>
+              <a
+                :href="getAttachmentPath(attachment)"
+                :key="attachment.id"
+                :title="attachment.name"
+                class="flexrow"
+                target="_blank"
+                v-for="attachment in fileAttachments"
+              >
+                <paperclip-icon
+                  size="1x"
+                  class="flexrow-item attachment-icon"
+                />
+                <span class="flexrow-item">
+                  {{ attachment.name }}
+                </span>
+              </a>
+            </p>
+            <div class="replies">
+              <div>
+                <div
+                  :key="replyComment.id"
+                  class="reply-comment"
+                  v-for="replyComment in comment.replies || []"
+                >
+                  <div class="flexrow">
+                    <people-avatar
+                      class="flexrow-item"
+                      :size="18"
+                      :font-size="10"
                       :person="personMap.get(replyComment.person_id)"
                     />
-                  </strong>
-                  <span
-                    class="flexrow-item reply-date"
-                    :title="replyDate(replyComment.date)"
-                  >
-                    {{ renderDate(replyComment.date) }}
-                  </span>
-                  <span class="filler">
-                  </span>
-                  <span
-                    class="flexrow-item reply-delete"
-                    :title="$t('main.delete')"
-                    @click="onDeleteReplyClicked(replyComment)"
-                    v-if="isCurrentUserAdmin || replyComment.person_id === user.id"
-                  >
-                    x
-                  </span>
+                    <strong class="flexrow-item">
+                      <people-name
+                        :person="personMap.get(replyComment.person_id)"
+                      />
+                    </strong>
+                    <span
+                      class="flexrow-item reply-date"
+                      :title="replyFullDate(replyComment.date)"
+                    >
+                      {{ replyShortDate(replyComment.date) }}
+                    </span>
+                    <span class="filler"> </span>
+                    <span
+                      class="flexrow-item reply-delete"
+                      :title="$t('main.delete')"
+                      @click="onDeleteReplyClicked(replyComment)"
+                      v-if="
+                        isCurrentUserAdmin || replyComment.person_id === user.id
+                      "
+                    >
+                      x
+                    </span>
+                  </div>
+                  <p
+                    v-html="
+                      renderComment(
+                        replyComment.text,
+                        replyComment.mentions || [],
+                        replyComment.department_mentions || [],
+                        personMap,
+                        departmentMap,
+                        ''
+                      )
+                    "
+                    class="comment-text"
+                  ></p>
                 </div>
-                <p
-                  v-html="renderComment(replyComment.text, [], personMap, '')"
-                  class="comment-text"
-                >
-                </p>
+              </div>
+              <at-ta
+                :members="atOptions"
+                name-key="full_name"
+                :limit="2"
+                @input="onAtTextChanged"
+              >
+                <template slot="item" slot-scope="team">
+                  <template v-if="team.item.isTime"> ⏱️ frame </template>
+                  <template v-else>
+                    <div class="flexrow">
+                      <people-avatar
+                        class="flexrow-item"
+                        :person="team.item"
+                        :size="20"
+                        :font-size="11"
+                        :no-cache="true"
+                        :is-link="false"
+                      />
+                      <span class="flexrow-item">
+                        {{ team.item.full_name }}
+                      </span>
+                    </div>
+                  </template>
+                </template>
+                <textarea
+                  ref="reply"
+                  class="reply"
+                  @keyup.ctrl.enter="onReplyClicked"
+                  v-model="replyText"
+                  v-show="showReply"
+                />
+              </at-ta>
+              <div class="has-text-right">
+                <button-simple
+                  class="reply-button"
+                  :text="$t('main.reply')"
+                  :is-loading="isReplyLoading"
+                  @click="onReplyClicked"
+                  v-show="showReply"
+                />
               </div>
             </div>
-            <textarea
-              ref="reply"
-              class="reply"
-              @keyup.ctrl.enter="onReplyClicked"
-              v-model="replyText"
-              v-show="showReply"
-            />
-            <div class="has-text-right">
-              <button-simple
-                class="reply-button"
-                :text="$t('main.reply')"
-                :is-loading="isReplyLoading"
-                @click="onReplyClicked"
-                v-show="showReply"
-              />
-            </div>
-          </div>
 
-          <div
-            class="flexrow"
-            :title="isLikedBy"
-            v-if="comment.text.length > 0"
-          >
-            <button
-              :class="{
-                'like-button': true,
-                'like-button--empty': comment.like === undefined ? true : false,
-                'flexrow-item': true
-              }"
-              @click="acknowledgeComment(comment)"
-              type="button"
+            <div
+              class="flexrow"
+              :title="isLikedBy"
+              v-if="comment.text.length > 0 || comment.previews.length > 0"
             >
-              <thumbs-up-icon size="1x" />
-              <span>{{ comment.acknowledgements.length }}</span>
-            </button>
-            <span class="filler">
-            </span>
-            <span
-              class="flexrow-item reply-button"
-              @click="showReplyWidget"
-              v-if="!showReply"
-            >
-              {{ $t('main.reply') }}
-            </span>
+              <button
+                :class="{
+                  'like-button': true,
+                  'like-button--empty':
+                    comment.like === undefined ? true : false,
+                  'flexrow-item': true
+                }"
+                @click="acknowledgeComment(comment)"
+                type="button"
+              >
+                <thumbs-up-icon size="1x" />
+                <span>{{ comment.acknowledgements.length }}</span>
+              </button>
+              <span class="filler"> </span>
+              <span
+                class="flexrow-item reply-button"
+                @click="showReplyWidget"
+                v-if="!showReply"
+              >
+                {{ $t('main.reply') }}
+              </span>
+            </div>
+            <p class="pinned-text" v-if="comment.pinned">
+              {{ $t('comments.pinned') }}
+            </p>
           </div>
-          <p class="pinned-text" v-if="comment.pinned">
-            {{ $t('comments.pinned') }}
-          </p>
         </div>
       </div>
-    </div>
-    <div
-      class="flexrow content-wrapper preview-info"
-      v-if="comment.previews.length > 0"
-    >
-      <router-link
-        class="flexrow-item round-name revision"
-        :to="previewRoute"
+      <div
+        class="flexrow content-wrapper preview-info"
+        v-if="comment.previews.length > 0"
       >
-        Revision {{ comment.previews[0].revision }}
-      </router-link>
-      <span
-        class="flexrow-item preview-status"
-        :title="comment.previews[0].validation_status"
-        :style="getPreviewValidationStyle(comment.previews[0])"
-        @click="changePreviewValidationStatus(comment.previews[0])"
-      >
-        &nbsp;
-      </span>
-    </div>
+        <router-link
+          class="flexrow-item round-name revision"
+          :to="previewRoute"
+        >
+          Revision {{ comment.previews[0].revision }}
+        </router-link>
+        <span
+          class="flexrow-item preview-status"
+          :title="comment.previews[0].validation_status"
+          :style="getPreviewValidationStyle(comment.previews[0])"
+          @click="changePreviewValidationStatus(comment.previews[0])"
+        >
+          &nbsp;
+        </span>
+      </div>
 
-    <!--div
+      <!--div
       class="has-text-centered add-checklist"
       @click="addChecklistEntry()"
       v-if="isAddChecklistAllowed"
     >
       {{ $t('comments.add_checklist') }}
     </div-->
-  </article>
-  <div class="empty-comment" v-else>
-    <div class="flexrow content-wrapper">
-      <validation-tag
-        class="flexrow-item"
-        :task="{ task_status_id: comment.task_status.id}"
-        :is-static="true"
-        :thin="!isChange"
-      />
-      <people-avatar
-        class="flexrow-item"
-        :person="comment.person"
-        :size="25"
-        :font-size="12"
-      />
-      <people-name class="flexrow-item" :person="comment.person" />
-      <span class="filler">
-      </span>
-      <span class="flexrow-item date" :title="fullDate">
-        {{ shortDate }}
-      </span>
-      <div class="flexrow-item menu-wrapper">
-        <chevron-down-icon
-          class="menu-icon"
-          @click="toggleCommentMenu"
+    </article>
+    <div class="empty-comment" v-else>
+      <div class="flexrow content-wrapper">
+        <validation-tag
+          class="flexrow-item"
+          :task="{ task_status_id: comment.task_status.id }"
+          :is-static="true"
+          :thin="!isChange"
         />
-        <comment-menu
-          :is-editable="editable"
-          :is-empty="true"
-          @pin-clicked="$emit('pin-comment', comment)"
-          @edit-clicked="$emit('edit-comment', comment); toggleCommentMenu()"
-          @delete-clicked="$emit('delete-comment', comment); toggleCommentMenu()"
-          ref="menu"
+        <people-avatar
+          class="flexrow-item"
+          :person="comment.person"
+          :size="25"
+          :font-size="12"
         />
+        <people-name class="flexrow-item" :person="comment.person" />
+        <span class="filler"> </span>
+        <span class="flexrow-item date" :title="fullDate">
+          {{ shortDate }}
+        </span>
+        <div class="flexrow-item menu-wrapper">
+          <chevron-down-icon class="menu-icon" @click="toggleCommentMenu" />
+          <comment-menu
+            :is-editable="editable"
+            :is-empty="true"
+            @pin-clicked="$emit('pin-comment', comment)"
+            @edit-clicked="
+              $emit('edit-comment', comment)
+              toggleCommentMenu()
+            "
+            @delete-clicked="
+              $emit('delete-comment', comment)
+              toggleCommentMenu()
+            "
+            ref="menu"
+          />
+        </div>
       </div>
     </div>
   </div>
-</div>
 </template>
 
 <script>
+import AtTa from 'vue-at/dist/vue-at-textarea'
 import moment from 'moment'
 import { mapActions, mapGetters } from 'vuex'
 import { remove } from '@/lib/models'
-import { renderComment } from '@/lib/render'
+import { renderComment, replaceTimeWithTimecode } from '@/lib/render'
 import { sortByName } from '@/lib/sorting'
 import { formatDate, parseDate } from '@/lib/time'
 import colors from '@/lib/colors'
 import files from '@/lib/files'
+import { pluralizeEntityType } from '@/lib/path'
 
 import {
   ChevronDownIcon,
@@ -304,6 +351,7 @@ import ValidationTag from '@/components/widgets/ValidationTag'
 export default {
   name: 'comment',
   components: {
+    AtTa,
     ButtonSimple,
     Checklist,
     ChevronDownIcon,
@@ -316,8 +364,9 @@ export default {
     ValidationTag
   },
 
-  data () {
+  data() {
     return {
+      atOptions: [],
       checklist: [],
       isReplyLoading: false,
       replyText: '',
@@ -330,6 +379,10 @@ export default {
     comment: {
       type: Object,
       default: () => {}
+    },
+    team: {
+      type: Array,
+      default: () => []
     },
     task: {
       type: Object,
@@ -361,56 +414,55 @@ export default {
     }
   },
 
-  mounted () {
+  mounted() {
     if (this.comment.checklist) {
       this.$options.silent = true
       this.checklist = [...this.comment.checklist]
-      this.$nextTick()
-        .then(() => {
-          this.$options.silent = false
-        })
+      this.$nextTick().then(() => {
+        this.$options.silent = false
+      })
     }
-    Array.from(
-      document.getElementsByClassName(this.uniqueClassName)
-    ).forEach(element => {
-      element.addEventListener('click', this.timeCodeClicked)
-    })
+    Array.from(document.getElementsByClassName(this.uniqueClassName)).forEach(
+      element => {
+        element.addEventListener('click', this.timeCodeClicked)
+      }
+    )
   },
 
-  destroyed () {
-    Array.from(
-      document.getElementsByClassName(this.uniqueClassName)
-    ).forEach(element => {
-      element.removeEventListener('click', this.timeCodeClicked)
-    })
+  destroyed() {
+    Array.from(document.getElementsByClassName(this.uniqueClassName)).forEach(
+      element => {
+        element.removeEventListener('click', this.timeCodeClicked)
+      }
+    )
   },
 
   computed: {
     ...mapGetters([
       'currentProduction',
+      'departmentMap',
       'isCurrentUserAdmin',
+      'isCurrentUserClient',
       'isCurrentUserManager',
       'isDarkTheme',
       'user',
       'personMap',
+      'productionDepartmentIds',
       'taskTypeMap',
       'taskStatusMap'
     ]),
 
-    isEmpty () {
+    isEmpty() {
       return (
-        this.comment.text.length === 0 && (
-          !this.comment.checklist ||
-          this.comment.checklist.length === 0
-        ) &&
+        this.comment.text.length === 0 &&
+        (!this.comment.checklist || this.comment.checklist.length === 0) &&
         this.comment.attachment_files.length === 0 &&
-        this.comment.previews.length === 0 && !(
-          this.isFirst && this.taskStatus.is_done
-        )
+        this.comment.previews.length === 0 &&
+        !(this.isFirst && this.taskStatus.is_done)
       )
     },
 
-    previewRoute () {
+    previewRoute() {
       let route = {
         name: 'task',
         params: {
@@ -436,90 +488,94 @@ export default {
         route.params.episode_id = this.task.entity.episode_id
       }
       const taskType = this.taskTypeMap.get(this.task.task_type_id)
-      route.params.type = this.$tc(taskType.for_entity.toLowerCase(), 2)
+      route.params.type = pluralizeEntityType(taskType.for_entity)
       return route
     },
 
-    deleteCommentPath () {
+    deleteCommentPath() {
       return this.getPath('task-delete-comment')
     },
 
-    editCommentPath () {
+    editCommentPath() {
       return this.getPath('task-edit-comment')
     },
 
-    addPreviewPath () {
+    addPreviewPath() {
       return this.getPath('task-add-preview')
     },
 
-    taskStatus () {
+    taskStatus() {
       const status = this.taskStatusMap.get(this.comment.task_status.id)
       return status || this.comment.task_status
     },
 
-    isAddChecklistAllowed () {
-      return this.taskStatus.is_retake &&
+    isAddChecklistAllowed() {
+      return (
+        this.taskStatus.is_retake &&
         this.checklist.length === 0 &&
         this.user.id === this.comment.person_id
+      )
     },
 
-    isChangeChecklistAllowed () {
-      return this.taskStatus.is_retake &&
-        this.user.id === this.comment.person_id
+    isChangeChecklistAllowed() {
+      return (
+        this.taskStatus.is_retake && this.user.id === this.comment.person_id
+      )
     },
 
-    isLikedBy () {
-      const personList = this.comment.acknowledgements.map(
-        personId => this.personMap.get(personId)
+    isLikedBy() {
+      const personList = this.comment.acknowledgements.map(personId =>
+        this.personMap.get(personId)
       )
       return sortByName(personList)
         .map(p => p.name)
         .join(', ')
     },
 
-    pictureAttachments () {
+    pictureAttachments() {
       return [...this.comment.attachment_files]
         .sort((a, b) => a.name.localeCompare(b.name))
         .filter(attachment => {
-          return files.IMG_EXTENSIONS.includes(
-            attachment.extension
-          )
+          return files.IMG_EXTENSIONS.includes(attachment.extension)
         })
     },
 
-    fileAttachments () {
+    fileAttachments() {
       return this.comment.attachment_files.filter(attachment => {
-        return !files.IMG_EXTENSIONS.includes(
-          attachment.extension
-        )
+        return !files.IMG_EXTENSIONS.includes(attachment.extension)
       })
     },
 
-    commentDate () {
+    commentDate() {
       return parseDate(this.comment.created_at)
     },
 
-    fullDate () {
+    fullDate() {
       return this.commentDate
         .tz(this.user.timezone)
         .format('YYYY-MM-DD HH:mm:ss')
     },
 
-    shortDate () {
+    shortDate() {
       return this.renderDate(this.commentDate)
     },
 
-    boxShadowStyle () {
-      return `0 0 3px 2px ${this.comment.task_status.color}1F`
+    boxShadowStyle() {
+      const status = this.comment.task_status
+      return `0 0 3px 2px ${status.color}1F`
     },
 
-    statusColor () {
+    statusColor() {
       const color = this.comment.task_status.color
       if (this.isDarkTheme && !this.isEmpty) {
         return colors.darkenColor(color)
       } else {
         return color
       }
+    },
+
+    isAuthorClient() {
+      return this.personMap.get(this.comment.person_id).role === 'client'
     }
   },
 
@@ -530,17 +586,21 @@ export default {
       'updatePreviewFileValidationStatus'
     ]),
 
-    formatDate (date) {
+    formatDate(date) {
       return formatDate(date)
     },
 
-    replyDate (date) {
-      return moment(date)
+    replyFullDate(date) {
+      return moment(parseDate(date))
         .tz(this.user.timezone)
         .format('YYYY-MM-DD HH:mm:ss')
     },
 
-    renderDate (date) {
+    replyShortDate(date) {
+      return this.renderDate(parseDate(date))
+    },
+
+    renderDate(date) {
       date = moment(date)
       if (moment().isSame(date, 'd')) {
         return date.tz(this.user.timezone).format('HH:mm')
@@ -549,7 +609,7 @@ export default {
       }
     },
 
-    getPath (name) {
+    getPath(name) {
       const route = {
         name: name,
         params: {
@@ -564,33 +624,34 @@ export default {
       return route
     },
 
-    getAttachmentPath (attachment) {
-      return `/api/data/attachment-files/${attachment.id}/` +
+    getAttachmentPath(attachment) {
+      return (
+        `/api/data/attachment-files/${attachment.id}/` +
         `file/${attachment.name}`
+      )
     },
 
-    toggleCommentMenu () {
+    toggleCommentMenu() {
       this.$refs.menu.toggle()
     },
 
-    addChecklistEntry () {
+    addChecklistEntry() {
       this.$options.silent = true
       this.checklist.push({
         text: '',
         checked: false
       })
-      this.$nextTick()
-        .then(() => {
-          this.$options.silent = false
-        })
+      this.$nextTick().then(() => {
+        this.$options.silent = false
+      })
     },
 
-    removeTask (entry) {
+    removeTask(entry) {
       this.checklist = remove(this.checklist, entry)
     },
 
-    emitChangeEvent (event) {
-      const now = (new Date().getTime())
+    emitChangeEvent(event) {
+      const now = new Date().getTime()
       this.lastCall = this.lastCall || 0
       if (now - this.lastCall > 1000) {
         this.lastCall = now
@@ -602,15 +663,29 @@ export default {
       }
     },
 
-    acknowledgeComment (comment) {
+    acknowledgeComment(comment) {
       this.$emit('ack-comment', comment)
     },
 
-    timeCodeClicked (event) {
+    timeCodeClicked(event) {
       this.$emit('time-code-clicked', event.target.dataset)
     },
 
-    getPreviewValidationStyle (previewFile) {
+    onChecklistTimecodeClicked(data) {
+      this.$emit('time-code-clicked', {
+        versionRevision: data.revision,
+        frame: data.frame - 1
+      })
+    },
+
+    setFrame(data) {
+      this.$emit('time-code-clicked', {
+        versionRevision: data.revision,
+        frame: data.frame
+      })
+    },
+
+    getPreviewValidationStyle(previewFile) {
       let color = '#AAA'
       if (previewFile.validation_status === 'validated') {
         color = '#67BE48' // green
@@ -620,7 +695,7 @@ export default {
       return { background: color }
     },
 
-    changePreviewValidationStatus (previewFile) {
+    changePreviewValidationStatus(previewFile) {
       if (!this.isCurrentUserManager) return
       let status = previewFile.status
       if (previewFile.validation_status === 'validated') {
@@ -635,14 +710,14 @@ export default {
 
     renderComment,
 
-    showReplyWidget () {
+    showReplyWidget() {
       this.showReply = true
       this.$nextTick(() => {
         this.$refs.reply.focus()
       })
     },
 
-    onReplyClicked () {
+    onReplyClicked() {
       this.isReplyLoading = true
       this.replyToComment({ comment: this.comment, text: this.replyText })
         .then(() => {
@@ -653,28 +728,70 @@ export default {
         .catch(console.error)
     },
 
-    onDeleteReplyClicked (reply) {
+    onDeleteReplyClicked(reply) {
       this.deleteReply({ comment: this.comment, reply })
         .then(() => {
           this.isReplyLoading = false
         })
         .catch(console.error)
+    },
+
+    onAtTextChanged(input) {
+      if (input.indexOf('@frame') >= 0) {
+        this.$nextTick(() => {
+          const text = replaceTimeWithTimecode(
+            this.$refs['comment-textarea'].value,
+            this.revision,
+            this.time,
+            this.fps
+          )
+          this.$refs['comment-textarea'].value = text
+        })
+      }
     }
   },
 
   watch: {
-    'comment.checklist' () {
+    'comment.checklist'() {
       this.$options.silent = true
       this.checklist = [...this.comment.checklist]
-      this.$nextTick()
-        .then(() => {
-          this.$options.silent = false
-        })
+      this.$nextTick().then(() => {
+        this.$options.silent = false
+      })
     },
 
-    checklist () {
+    checklist() {
       if (!this.$options.silent) {
         this.emitChangeEvent()
+      }
+    },
+
+    team: {
+      deep: true,
+      immediate: true,
+      handler() {
+        if (this.isCurrentUserClient) {
+          this.atOptions = this.team.filter(person =>
+            ['admin', 'manager', 'supervisor', 'client'].includes(person.role)
+          )
+        } else {
+          this.atOptions = [...this.team]
+        }
+        this.atOptions = this.atOptions.concat(
+          this.productionDepartmentIds.map(departmentId => {
+            const department = this.departmentMap.get(departmentId)
+            return {
+              isDepartment: true,
+              full_name: department.name,
+              color: department.color,
+              id: departmentId
+            }
+          })
+        )
+        this.atOptions.push({
+          isTime: true,
+          full_name: 'frame'
+        })
       }
     }
   }
@@ -688,7 +805,7 @@ export default {
   }
 
   .content .client-comment {
-    background: #C4677B;
+    background: #c4677b;
     color: white;
   }
 
@@ -707,7 +824,7 @@ export default {
 
 article.comment {
   background: white;
-  border-radius: 5px;
+  border-radius: 10px;
   padding: 0;
   margin: 1em 0;
   word-wrap: anywhere;
@@ -719,7 +836,7 @@ article.comment {
 }
 
 .comment.highlighted {
-  background: #F1EEFF;
+  background: #f1eeff;
 }
 
 .content .comment-person {
@@ -735,7 +852,7 @@ article.comment {
 
 .content {
   .comment-text {
-    margin-top: .5rem;
+    margin-top: 0.5rem;
     margin-bottom: 0rem;
     padding: 0.2em 0.1em;
     word-break: break-word;
@@ -759,7 +876,7 @@ article.comment {
 }
 
 .pinned {
-  transform: scale(1.02)
+  transform: scale(1.02);
 }
 
 .pinned-text {
@@ -822,12 +939,12 @@ article.comment {
   align-items: center;
   background-color: transparent;
   border: 0;
-  border-radius: .5rem;
+  border-radius: 0.5rem;
   color: inherit;
   cursor: pointer;
   display: inline-flex;
   margin: 0;
-  padding: .3rem 0;
+  padding: 0.3rem 0;
   width: 100%;
   z-index: 10;
 
@@ -837,7 +954,7 @@ article.comment {
 }
 
 .like-button--empty {
-  opacity: .5;
+  opacity: 0.5;
 
   &:hover,
   &:focus {
@@ -892,17 +1009,20 @@ p {
 
 .copy-icon {
   cursor: pointer;
-  margin-left: .5em;
+  margin-left: 0.5em;
 }
 
 .congrats-picture {
   max-width: 300px;
+  max-height: 300px;
 }
 
 .reply-button {
+  border-radius: 5px;
   color: var(--text);
   cursor: pointer;
   font-size: 0.8em;
+  padding: 0;
   padding-right: 0.5em;
   text-align: right;
   width: 60px;
@@ -948,13 +1068,6 @@ textarea.reply {
     font-size: 0.8em;
     color: var(--text);
   }
-}
-
-.reply-button {
-  border-radius: 5px;
-  color: var(--text);
-  padding: 0;
-  text-transform: lowercase;
 }
 
 .reply-delete {

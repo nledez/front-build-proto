@@ -1,10 +1,18 @@
 import { marked } from 'marked'
+import { markedEmoji } from 'marked-emoji'
 import sanitizeHTML from 'sanitize-html'
 import { formatFrame, formatTime } from '@/lib/video'
+import emojis from '@/lib/emojis'
+
+const options = {
+  emojis,
+  unicode: true
+}
+marked.use(markedEmoji(options))
 
 export const TIME_CODE_REGEX = /v(\d+) (\d+):(\d+)\.(\d+) \((\d+)\)/g
 
-export const sanitize = (html) => {
+export const sanitize = html => {
   return sanitizeHTML(html, {
     allowedTags: sanitizeHTML.defaults.allowedTags.concat(['img']),
     allowedAttributes: {
@@ -14,7 +22,7 @@ export const sanitize = (html) => {
   })
 }
 
-export const getTaskTypeStyle = (task) => {
+export const getTaskTypeStyle = task => {
   let border = 'transparent'
   if (task) border = task.task_type_color
   return {
@@ -23,9 +31,15 @@ export const getTaskTypeStyle = (task) => {
 }
 
 export const renderComment = (
-  input, mentions, personMap, className = ''
+  input,
+  mentions,
+  departmentMentions,
+  personMap,
+  departmentMap,
+  className = ''
 ) => {
   let compiled = marked.parse(input || '')
+  compiled = sanitize(compiled)
   if (mentions) {
     mentions.forEach(personId => {
       const person = personMap.get(personId)
@@ -34,8 +48,14 @@ export const renderComment = (
         `<a class="mention" href="/people/${person.id}">@${person.full_name}</a>`
       )
     })
+    departmentMentions.forEach(departmentId => {
+      const department = departmentMap.get(departmentId)
+      compiled = compiled.replaceAll(
+        `@${department.name}`,
+        `<span style="color: ${department.color}">@${department.name}</span>`
+      )
+    })
   }
-  compiled = sanitize(compiled)
 
   return compiled.replaceAll(
     TIME_CODE_REGEX,
@@ -53,7 +73,7 @@ export const renderComment = (
   )
 }
 
-export const renderMarkdown = (input) => {
+export const renderMarkdown = input => {
   const compiled = marked.parse(input || '')
   return sanitize(compiled)
 }
@@ -67,17 +87,18 @@ export const replaceTimeWithTimecode = (
   if (comment) {
     const frameDuration = Math.round((1 / fps) * 10000) / 10000
     const frameNumber = Math.floor(currentTimeRaw / frameDuration)
-    const frame = formatFrame(frameNumber)
+    const frame = formatFrame(frameNumber + 1)
     const formatedTime = formatTime(currentTimeRaw)
     return comment.replaceAll(
-      '@frame', `v${currentPreviewRevision} ${formatedTime} (${frame})`
+      '@frame',
+      `v${currentPreviewRevision} ${formatedTime} (${frame})`
     )
   } else {
     return ''
   }
 }
 
-export const renderFileSize = (size) => {
+export const renderFileSize = size => {
   let renderedSize = ''
   if (size > 1000000000) {
     renderedSize = (size / 1000000000).toFixed(1) + 'G'

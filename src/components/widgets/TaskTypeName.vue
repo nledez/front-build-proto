@@ -1,40 +1,37 @@
 <template>
-<router-link
-  :to="taskTypePath"
-  v-if="productionId && !isCurrentUserClient"
->
-  <span
-    class="tag task-type-name"
+  <router-link :to="taskTypePath" v-if="productionId && !isCurrentUserClient">
+    <span
+      class="tag task-type-name"
+      :style="{ 'border-left': '4px solid ' + color }"
+    >
+      {{ taskType.name }}
+    </span>
+  </router-link>
+  <div
+    :class="{
+      tag: true,
+      'task-type-name': true,
+      'no-link': true,
+      deletable,
+      canceled: disable
+    }"
     :style="{ 'border-left': '4px solid ' + color }"
+    v-else
   >
     {{ taskType.name }}
-  </span>
-</router-link>
-<div
-  :class="{
-    tag: true,
-    'task-type-name': true,
-    'no-link': true,
-    deletable,
-    canceled: disable
-  }"
-  :style="{ 'border-left': '4px solid ' + color }"
-  v-else
->
-  {{ taskType.name }}
-  <span class="delete-times" v-if="deletable" @click="$emit('delete')">
-    ×
-  </span>
-</div>
+    <span class="delete-times" v-if="deletable" @click="$emit('delete')">
+      ×
+    </span>
+  </div>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
+import { pluralizeEntityType } from '@/lib/path'
 
 export default {
   name: 'task-type-name',
-  components: {
-  },
+  components: {},
 
   props: {
     taskType: {
@@ -56,38 +53,45 @@ export default {
   },
 
   computed: {
-    ...mapGetters([
-      'isCurrentUserClient',
-      'isTaskTypePriorityHigherById'
-    ]),
+    ...mapGetters(['isCurrentUserClient', 'isTaskTypePriorityHigherById']),
 
-    color () {
+    color() {
       if (this.taskType.color.toUpperCase() === '#000000') return '$grey-strong'
       else return this.taskType.color
     },
 
-    taskTypePath () {
-      const route = {
-        name: 'task-type',
-        params: {
-          production_id: this.productionId,
-          task_type_id: this.taskType.id,
-          type: this.$tc(this.taskType.for_entity.toLowerCase(), 2) + 's'
+    taskTypePath() {
+      let route = {}
+      if (this.taskType.for_entity === 'Episode') {
+        route = {
+          name: 'episodes-task-type',
+          params: {
+            production_id: this.productionId,
+            task_type_id: this.taskType.id
+          }
         }
-      }
+      } else {
+        route = {
+          name: 'task-type',
+          params: {
+            production_id: this.productionId,
+            task_type_id: this.taskType.id,
+            type: pluralizeEntityType(this.taskType.for_entity)
+          }
+        }
 
-      if (this.taskType.episode_id || this.$route.params.episode_id) {
-        route.name = 'episode-task-type'
-        route.params.episode_id =
-          this.taskType.episode_id || this.$route.params.episode_id
+        if (this.taskType.episode_id || this.$route.params.episode_id) {
+          route.name = 'episode-task-type'
+          route.params.episode_id =
+            this.taskType.episode_id || this.$route.params.episode_id
+        }
       }
       return route
     }
   },
 
   methods: {
-    ...mapActions([
-    ])
+    ...mapActions([])
   }
 }
 </script>
@@ -97,7 +101,7 @@ export default {
   border-radius: 0;
   color: var(--text);
   font-size: 0.9em;
-  font-weight: bold;
+  font-weight: 600;
   line-height: 0.8em;
   padding: 0 0.7em;
   margin: 0;
@@ -124,7 +128,7 @@ export default {
 }
 
 .delete-times:hover {
-  color: black
+  color: black;
 }
 
 .no-link {

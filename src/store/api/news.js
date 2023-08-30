@@ -2,9 +2,14 @@ import client from '@/store/api/client'
 import { buildQueryString } from '@/lib/query'
 
 export default {
-  getLastNews (params) {
+  getLastNews(params) {
+    const isStudio = params.isStudio
     const productionId = params.productionId
-    if (productionId) {
+    if (isStudio) {
+      delete params.isStudio
+      const path = buildQueryString(`/api/data/projects/news`, params)
+      return client.pget(path)
+    } else if (productionId) {
       delete params.productionId
       const path = buildQueryString(
         `/api/data/projects/${productionId}/news`,
@@ -16,7 +21,7 @@ export default {
     }
   },
 
-  getNews (projectId, newsId) {
+  getNews(projectId, newsId) {
     const path = `/api/data/projects/${projectId}/news/${newsId}`
     return client.pget(path)
   }

@@ -4,12 +4,12 @@
 export const buildNameIndex = (entries, split = true) => {
   const index = Object.create(null)
   const entryIndex = Object.create(null)
-  entries.forEach((entry) => {
+  entries.forEach(entry => {
     if (entry) {
       let words
       if (entry.name || entry.full_name) {
         if (split) {
-          words = entry.name.split(' ')
+          words = entry.name.toLowerCase().split(' ')
         } else {
           words = [entry.name]
         }
@@ -25,9 +25,9 @@ export const buildNameIndex = (entries, split = true) => {
 /*
  * Generate an index to find task type easily.
  */
-export const buildTaskTypeIndex = (taskTypes) => {
-  const sortedTaskTypes = [...taskTypes].sort(
-    (a, b) => a.name.localeCompare(b.name)
+export const buildTaskTypeIndex = taskTypes => {
+  const sortedTaskTypes = [...taskTypes].sort((a, b) =>
+    a.name.localeCompare(b.name)
   )
   return buildNameIndex(sortedTaskTypes, false)
 }
@@ -35,7 +35,7 @@ export const buildTaskTypeIndex = (taskTypes) => {
 /*
  * Generate an index to find task status easily.
  */
-export const buildTaskStatusIndex = (taskStatuses) => {
+export const buildTaskStatusIndex = taskStatuses => {
   const taskStatusShortNameIndex = {}
   taskStatuses.forEach(taskStatus => {
     const shortName = taskStatus.short_name.toLowerCase()
@@ -49,17 +49,21 @@ export const buildTaskStatusIndex = (taskStatuses) => {
  * entity name and words appearing into it.
  * The result is an array of tasks.
  */
-export const buildTaskIndex = (tasks) => {
+export const buildTaskIndex = tasks => {
   const index = Object.create(null)
   const taskIndex = Object.create(null)
-  tasks.forEach((task) => {
-    const stringToIndex =
-      task.full_entity_name.replace(/_/g, ' ').replace(/-/g, ' ')
-    const words = stringToIndex.split(' ').concat([
-      task.task_type_name,
-      task.task_status_short_name,
-      task.project_name
-    ])
+  tasks.forEach(task => {
+    const stringToIndex = task.full_entity_name
+      .replace(/_/g, ' ')
+      .replace(/-/g, ' ')
+    const words = stringToIndex
+      .toLowerCase()
+      .split(' ')
+      .concat([
+        task.task_type_name,
+        task.task_status_short_name,
+        task.project_name
+      ])
     indexWords(index, taskIndex, task, words)
   })
   return index
@@ -74,14 +78,12 @@ export const buildSupervisorTaskIndex = (tasks, personMap, taskStatusMap) => {
   const index = Object.create(null)
   const taskIndex = Object.create(null)
   tasks.forEach(task => {
-    const stringToIndex = task
-      .entity_name
-      .replace(/_/g, ' ')
-      .replace(/-/g, ' ')
+    const stringToIndex = task.entity_name.replace(/_/g, ' ').replace(/-/g, ' ')
     const taskStatus = taskStatusMap.get(task.task_status_id)
-    const words = stringToIndex.split(' ').concat([
-      taskStatus.short_name
-    ])
+    const words = stringToIndex
+      .toLowerCase()
+      .split(' ')
+      .concat([taskStatus.short_name])
     task.assignees.forEach(personId => {
       const person = personMap.get(personId)
       if (person) words.push(person.first_name, person.last_name)
@@ -96,15 +98,18 @@ export const buildSupervisorTaskIndex = (tasks, personMap, taskStatusMap) => {
  * type name, and words appearing in the asset name.
  * Results are arrays of assets.
  */
-export const buildAssetIndex = (entries) => {
+export const buildAssetIndex = entries => {
   const index = Object.create(null)
   const assetIndex = Object.create(null)
-  entries.forEach((asset) => {
+  entries.forEach(asset => {
     const stringToIndex = asset.name.replace(/_/g, ' ').replace(/-/g, ' ')
-    const assetTypeWords = asset.asset_type_name.split(' ')
-    const words = stringToIndex.split(' ')
-      .concat(assetTypeWords)
+    let words = []
+      .concat(asset.asset_type_name.split(' '))
+      .concat(stringToIndex.split(' '))
       .concat([asset.name])
+    const camelWords = stringToIndex.match(/[A-Z]+[a-z0-9]*/g)
+    if (camelWords) words = words.concat(camelWords)
+    words = [...new Set(words.map(word => word.toLowerCase()))]
     indexWords(index, assetIndex, asset, words)
   })
   return index
@@ -115,10 +120,10 @@ export const buildAssetIndex = (entries) => {
  * sequence and shot names at the same time.
  * Results are arrays of shots.
  */
-export const buildShotIndex = (shots) => {
+export const buildShotIndex = shots => {
   const index = Object.create(null)
   const shotIndex = Object.create(null)
-  shots.forEach((shot) => {
+  shots.forEach(shot => {
     const words = [shot.name, shot.sequence_name, shot.episode_name]
     indexWords(index, shotIndex, shot, words)
   })
@@ -130,10 +135,10 @@ export const buildShotIndex = (shots) => {
  * and edit names at the same time.
  * Results are arrays of edits.
  */
-export const buildEditIndex = (edits) => {
+export const buildEditIndex = edits => {
   const index = Object.create(null)
   const editIndex = Object.create(null)
-  edits.forEach((edit) => {
+  edits.forEach(edit => {
     const words = [edit.name, edit.episode_name]
     indexWords(index, editIndex, edit, words)
   })
@@ -145,10 +150,10 @@ export const buildEditIndex = (edits) => {
  * episode and sequence names at the same time.
  * Results are arrays of sequences.
  */
-export const buildSequenceIndex = (sequences) => {
+export const buildSequenceIndex = sequences => {
   const index = Object.create(null)
   const sequenceIndex = Object.create(null)
-  sequences.forEach((sequence) => {
+  sequences.forEach(sequence => {
     const words = [sequence.name, sequence.episode_name]
     indexWords(index, sequenceIndex, sequence, words)
   })
@@ -160,10 +165,10 @@ export const buildSequenceIndex = (sequences) => {
  * episode name.
  * Results are arrays of episodes.
  */
-export const buildEpisodeIndex = (episodes) => {
+export const buildEpisodeIndex = episodes => {
   const index = Object.create(null)
   const episodeIndex = Object.create(null)
-  episodes.forEach((episode) => {
+  episodes.forEach(episode => {
     const words = [episode.name]
     indexWords(index, episodeIndex, episode, words)
   })
@@ -178,8 +183,8 @@ export const buildEpisodeIndex = (episodes) => {
 export const indexSearch = (index, keywords) => {
   if (!keywords) keywords = []
   const results = keywords
-    .map((query) => indexSearchWord(index, query))
-    .filter((result) => result !== null)
+    .map(query => indexSearchWord(index, query))
+    .filter(result => result !== null)
 
   if (results.length > 0) {
     return results.reduce(resultIntersection, [...results[0]])
