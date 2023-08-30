@@ -18,7 +18,7 @@ jobs:
         env:
           NODE_OPTIONS: "--max_old_space_size=8192"
         run: |
-          npm ci
+          npm install
           npm run build
           GIT_COMMIT="$(git rev-parse HEAD)"
           GIT_TAG="$(git describe --tags)"
@@ -36,23 +36,8 @@ jobs:
         with:
           artifacts: "kitsu-*.tgz,kitsu-*.SHA512"
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Update "build" branch
-        run: |
-          KITSU_VERSION="$(cat dist/.version.txt)"
-          mv dist ..
-          git checkout build
-          git reset --hard origin/build
-          test -d dist && git rm -rf dist
-          test -d dist && rm -rf dist
-          mv ../dist .
-          git add -f dist
-          git config --global user.email "no-reply@cg-wire.com"
-          git config --global user.name "CGWire bot"
-          git commit -m "New release (${KITSU_VERSION})"
-          git tag ${KITSU_VERSION}-build
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tags: true
-          branch: build
+      - name: CGWire WebHook
+        uses: distributhor/workflow-webhook@v3
+        env:
+          webhook_url: ${{ secrets.WEBHOOK_URL }}
+          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
