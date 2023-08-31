@@ -36,8 +36,3 @@ jobs:
         with:
           artifacts: "kitsu-*.tgz,kitsu-*.SHA512"
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: CGWire WebHook
-        uses: distributhor/workflow-webhook@v3
-        env:
-          webhook_url: ${{ secrets.WEBHOOK_URL }}
-          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
